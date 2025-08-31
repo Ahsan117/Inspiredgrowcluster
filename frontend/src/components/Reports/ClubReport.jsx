@@ -97,7 +97,8 @@ function generateFlatReport({ sales = [], saleReturns = [], stockTransfers = [] 
   // Process Sales
   sales.forEach(sale => {
     if (!sale.warehouse?._id) return;
-    const day = sale.saleDate.substring(0, 10);
+    console.log("Processing Sale:", sale);
+    const day = sale.createdAt?.substring(0, 10);
     const warehouseId = sale.warehouse._id;
 
     for (const lineItem of sale.items) {
@@ -197,7 +198,7 @@ const fetchInitialData = async () => {
                     
                 });
                  setStock(stockRes.data.data);
-                setSales(salesRes.data);
+                setSales(salesRes.data.data);
                 setReturns(salesReturnRes.data.returns);
                 
               
@@ -258,6 +259,7 @@ const fetchInitialData = async () => {
 
    const applyfilter = () => {
   const filterreport = report.filter((transfer) => {
+    console.log("Filtering Transfer:", transfer);
     const warehouseMatch = selectedWarehouse === "all" || transfer.warehouseId === selectedWarehouse;
     const categoryMatch = category === "all" || transfer.categoryId === category;
 
@@ -272,57 +274,9 @@ const fetchInitialData = async () => {
     return warehouseMatch && categoryMatch && dateInRange;
   });
 
-  // const filterSale = sales.filter((transfer) => {
-  //   const warehouseMatch = selectedWarehouse === "all" || transfer.warehouse?._id === selectedWarehouse;
-
-  //   const dateObj = new Date(transfer.saleDate);
-  //   const fromDateObj = dateFrom ? new Date(dateFrom) : null;
-  //   const toDateObj = dateTo ? new Date(dateTo) : null;
-
-  //   const dateInRange =
-  //     (!fromDateObj || dateObj >= fromDateObj) &&
-  //     (!toDateObj || dateObj <= toDateObj);
-
-  //   return warehouseMatch && dateInRange;
-  // });
-
-  // setFilteredTransfers(filterSale);
+ 
   setFinalReport(filterreport);
 };
-
-//    useEffect(() => {
-//   const updatedItems = [];
-   
-//   filteredTransfers.forEach((sale) => {
-//     sale.items.forEach((item) => {
-//       if(!item.item) return; // Skip if item is null or undefined
-//       const id = item.item?._id;
-//       const existingIndex = updatedItems.findIndex((bi) => bi.id === id);
-
-//       if (existingIndex !== -1) {
-//         updatedItems[existingIndex].quantity += item.quantity;
-//       } else {
-//         updatedItems.push({
-//           customerName: sale.customer?.customerName || 'NA',
-//           saleCode: sale.saleCode,
-//           saleDate: sale.saleDate,
-//           id: id,
-//           itemName: item.item?.itemName,
-//           quantity: item.quantity,
-//           ...item, // include any other relevant fields
-//         });
-//       }
-//     });
-//   });
-
-
-//   const total= updatedItems.reduce((acc, item) => acc + (item.subtotal), 0);
-//   setTotal(total);
-  
-//   setSaleItems(updatedItems);
-// }, [filteredTransfers]);
-
-
 
               // Export to PDF function
              

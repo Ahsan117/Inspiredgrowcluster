@@ -396,31 +396,27 @@ useEffect(() => {
   async function loadNextInvoiceCode() {
     try {
       const year = new Date().getFullYear();
-      const [saleRes, posRes] = await Promise.all([
-        axios.get(`${link}/api/sales`, authHeaders()),
-        axios.get(`${link}/api/pos`, authHeaders()),
-      ]);
-      const sales = saleRes.data.sales || saleRes.data;
-      const poses = posRes.data.data || posRes.data;
+      // const [saleRes, posRes] = await Promise.all([
+      //   axios.get(`${link}/api/sales`, authHeaders()),
+      //   axios.get(`${link}/api/pos`, authHeaders()),
+      // ]);
+      // const sales = saleRes.data.sales || saleRes.data;
+      // const poses = posRes.data.data || posRes.data;
+       const {data} =await axios.get(`${link}/api/pos/invoice-code`, authHeaders());
+      
 
-      const allCodes = [
-        ...sales.map((s) => s.saleCode),
-        ...poses.map((p) => p.saleCode),
-      ].filter(Boolean);
+let nextCode;
 
-      let maxSeq = 0;
-      allCodes.forEach((code) => {
-        const parts = code.split("/");
-        if (parts[1] == year) {
-          const seq = parseInt(parts[2], 10);
-          if (seq > maxSeq) maxSeq = seq;
-        }
-      });
-
-      const next = maxSeq + 1;
-      const padded = String(next).padStart(7, "0");
-      const nextCode = `SL/${year}/${padded}`;
-
+if (data) {
+  // data = "SL/2025/00019240"
+  const parts = data.split("/");  // ["SL", "2025", "00019240"]
+  const seq = parseInt(parts[2], 10); 
+  const padded = String(seq + 1).padStart(7, "0");
+  nextCode = `SL/${year}/${padded}`;
+} else {
+  // First invoice of the year
+  nextCode = `SL/${year}/0000001`;
+}
       setInvoiceCode(nextCode);
     } catch (err) {
       console.error("Could not compute next code:", err);
@@ -430,12 +426,7 @@ useEffect(() => {
   }
 
   async function fetchHeld() {
-    try {
-      const { data } = await axios.get(`${link}/api/pos`, authHeaders());
-      setHeldInvoices((data.data || data).filter((o) => o.status === "OnHold"));
-    } catch (err) {
-      console.error("Fetch held invoices error:", err.message);
-    }
+  
   }
 
   async function fetchPosById(id) {

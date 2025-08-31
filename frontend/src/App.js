@@ -174,7 +174,7 @@ const ClubBillReport = lazy(() => import("./components/Reports/ClubReport"));
 const AccountList1 = lazy(() => import("./components/Accounts/AccountListM/AccountList1"));
 const NewItem = lazy(() => import("./components/Items/NewItem"));
 const StockAnalyser = lazy(() => import ("./components/Stock/StockAnalyser/StockAnalyser.jsx"));
-
+const SellerPoints = lazy(() => import("./components/Reports/SellerPoints"));
 const queryClient=new QueryClient();
 
 function App() {
@@ -417,6 +417,7 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/reports/stock-transfer" element={<StockTransferReport />} />
         <Route path="/reports/sale-item" element={<SaleItemsReport />} />
         <Route path="/reports/club-bill" element={<ClubBillReport />} />
+        <Route path="/reports/seller-points" element={<SellerPoints />} />
         <Route path="/reports/stock" element={<StockReport />} />
         <Route path="/reports/item-compare" element={<ItemCompare />} />
         <Route path="/reports/item-transfer" element={<ItemTransfer />} />
