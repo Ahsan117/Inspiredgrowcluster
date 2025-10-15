@@ -59,8 +59,8 @@ const ItemListPage = ({ items, heading, onClose }) => {
                     <tr key={item._id} className="transition-colors hover:bg-white hover:bg-opacity-70">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {item.item.itemImage ? (
-                            <img className="object-cover w-10 h-10 mr-3 rounded-full" src={item.item.itemImage} alt={item.item.itemName} />
+                          {item.item.itemImages ? (
+                            <img className="object-cover w-10 h-10 mr-3 rounded-full" src={`https://pos.inspiredgrow.in/vps/uploads/qr/items/${item.item.itemImages[0]}`} alt={item.item.itemName} />
                           ) : (
                             <div className="flex items-center justify-center w-10 h-10 mr-3 bg-gray-200 rounded-full">
                               <FiImage className="text-gray-400" />
@@ -76,7 +76,7 @@ const ItemListPage = ({ items, heading, onClose }) => {
                         {item.item.itemCode}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">Rs.{item.price}</div>
+                        <div className="text-sm font-medium text-gray-900">Rs.{item.salesPrice}</div>
                         {item.discount > 0 && (
                           <div className="text-xs text-gray-500">
                             {item.discountType === 'Percentage' ? `${item.discount}% off` : `$${item.discount} off`}

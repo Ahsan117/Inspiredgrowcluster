@@ -28,7 +28,7 @@ const itemSchema = new mongoose.Schema({
   subSubCategory:  { type: mongoose.Schema.Types.ObjectId, ref: 'SubSubCategory', required: false },
   unit:            { type: mongoose.Schema.Types.ObjectId, ref: 'Unit', required: true },
   itemGroup:       { type: String, enum: ['Single','Variant'], required: true },
-
+   
   // Single-group pricing & barcodes
   sku:             { type: String, default: '' },
   hsn:             { type: String, default: '' },
@@ -55,7 +55,7 @@ const itemSchema = new mongoose.Schema({
   openingStock:    { type: Number, default: 0 },
   itemImages:      { type: [String], default: [] },
   masterImage:{type:String},
-
+  offer:{type:Boolean,default:false},
   // Embedding variants
   variants:        [variantSubSchema]
 }, { timestamps: true });

@@ -16,6 +16,7 @@ import axios from 'axios';
 import LoadingScreen from "../../Loading";
 import {Browser} from '@capacitor/browser';
 import BluetoothDevicesPage from '../../pages/BluetoothDevicesPage.jsx';  
+import CardOtpModal from '../Dashboard/CardApply.jsx';
 const PurchaseOverview = () => {
   const [device, setDevice] = useState(false);
       const link="https://pos.inspiredgrow.in/vps"
@@ -39,6 +40,9 @@ const PurchaseOverview = () => {
   const [newPaymentType, setNewPaymentType] = useState(null);
   const [cashSalesTotal, setCashSalesTotal] = useState(0);
   const [bankSalesTotal, setBankSalesTotal] = useState(0);
+
+   const [showModal, setShowModal] = useState(false);
+      const [sa, setSa] = useState(null);
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().slice(0, 10);
@@ -322,7 +326,7 @@ const PurchaseOverview = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       console.log("Fetched invoices:", data);
-      setSalesList(data);
+      setSalesList(data.data);
     } catch (err) {
       alert(`Could not load invoices: ${err.message}`);
     } finally {
@@ -395,7 +399,13 @@ const PurchaseOverview = () => {
 });
 
   const totalInvoices = filteredData.length;
-  const totalInvoiceAmt = filteredData.reduce((sum, inv) => sum + inv.amount, 0);
+const totalInvoiceAmt = filteredData.reduce(
+  (sum, inv) => sum + ((inv.totalAmount || 0) ),
+  0
+);
+  console.log(filteredData)
+  console.log("Total Invoice Amount (after discounts):", totalInvoiceAmt);
+  
   const totalReceivedAmt = filteredData.reduce(
     (sum, inv) =>
       sum +
@@ -405,8 +415,9 @@ const PurchaseOverview = () => {
       ) || 0),
     0
   );
+  console.log("Total Received Amount:", totalReceivedAmt);
   const totalSalesDue = totalInvoiceAmt - totalReceivedAmt;
-
+  console.log("Total Sales Due:", totalSalesDue);
   const handleCopy = () => {
     const data = filteredData
       .map(
@@ -512,7 +523,7 @@ const PurchaseOverview = () => {
   };
 
   const calculate = () => {
-    const total = currentUsers.reduce((sum, inv) => sum + inv.amount, 0);
+    const total = currentUsers.reduce((sum, inv) => sum + inv.totalAmount , 0);
     const paid = currentUsers.reduce(
       (sum, inv) =>
         sum +
@@ -533,23 +544,24 @@ const PurchaseOverview = () => {
 
 
 const generatePlainTextReceipt = (data) => {
-  const store = {
-    logo:      "/logo/inspiredgrow.jpg",
-    storeName: "Grocery on Wheels",
-    tagline:   "GROCERY ON WHEELS",
-    address:   "Basement 210-211 new Rishi Nagar near\nShree Shyam Baba Mandir Gali No. 9,Hisar-125001",
-    gst:       "06AAGCI0630K1ZR",
-    phone:     "9050092092",
-    email:     "INSPIREDGROW@GMAIL.COM",
-  };
+   const exclusiveDiscount=data.exclusiveDiscount ||0;
+  const store={
+        logo:        "/logo/inspiredgrow.jpg",                       //  40-50 px square looks right
+  storeName:   data.warehouse.warehouseName,                                //  already in state
+  tagline:     "GROCERY ON WHEELS",
+  address:     "Basement 210-211 new Rishi Nagar near Shree Shyam Baba Mandir Gali No. 9, Hisar – 125001",
+  gst:         "06AAGCI0630K1ZR",
+  phone:       "9050092092",
+  email:       "INSPIREDGROW@GMAIL.COM",
+    }
+   console.log("Mock Data",data)
+  const lineWidth = 42; // Standard for 3-inch (80mm) Epson P80 printers
+  const line = '-'.repeat(lineWidth) + '\n';
 
-  const lineWidth = 42;
-  const line      = "-".repeat(lineWidth) + "\n";
-
-  /* ---------- helpers ---------- */
-  const padRight = (str, len, ch = " ") => (String(str) + ch.repeat(len)).substring(0, len);
-  const padLeft  = (str, len, ch = " ") => (ch.repeat(len) + String(str)).slice(-len);
-
+  // --- Helper Functions ---
+  const padRight = (str, len, char = ' ') => (String(str) + char.repeat(len)).substring(0, len);
+  const padLeft = (str, len, char = ' ') => (char.repeat(len) + String(str)).slice(-len);
+  
   const wrapText = (txt, width) => {
     if (!txt || width <= 0) return [""];
     const words = txt.split(" ");
@@ -567,6 +579,7 @@ const generatePlainTextReceipt = (data) => {
     return out;
   };
 
+
   const centerText = (txt) => {
     const space = Math.max(0, Math.floor((lineWidth - txt.length) / 2));
     return " ".repeat(space) + txt;
@@ -575,12 +588,36 @@ const generatePlainTextReceipt = (data) => {
   const twoColumn = (left, right) =>
     left + " ".repeat(Math.max(0, lineWidth - left.length - right.length)) + right;
 
-  /* ---------- column widths ---------- */
-const col = { sno: 3, item: 13, qty: 4, mrp: 7, rate: 7, total: 8 }; // still 42
-
-  /* ---------- row formatter ---------- */
   
+  const col = { sno: 3, item: 13, qty: 4, mrp: 7, rate: 7, total: 8 }; // still 42
+
+  
+  // A single, reliable source for all column widths
+  const colWidths = {
+    sno: 3,
+    item: 18, // Increased item width slightly for better wrapping
+    qty: 4,
+    mrp: 7,
+    rate: 7,
+    total: 3,
+  };
+  // Adjusted total to fit, let's recalculate: 3+18+4+7+7 = 39. Left for total = 3. Too small.
+  // Let's use the previous stable widths.
+  const finalColWidths = {
+    sno: 3,
+    item: 15,
+    qty: 4,
+    mrp: 7,
+    rate: 7,
+    total: 6,
+  };
+
+  // =================================================================
+  // THIS IS THE NEW, SIMPLER, AND CORRECTED ITEM ROW FORMATTER
+  // =================================================================
+   
 const formatItemRow = (item, idx) => {
+  console.log("Item in formatItemRow",item.item.itemName)
   const lines = wrapText(item.item.itemName, col.item).slice(0, 4); // up to 4 lines
   let txt = '';
   lines.forEach((ln, i) => {
@@ -604,61 +641,92 @@ const formatItemRow = (item, idx) => {
 };
 
 
-  /* ---------- build receipt ---------- */
-  let text = "";
 
-  text += centerText(data.warehouse.warehouseName) + "\n";
-  store.address.split("\n").forEach(l => text += centerText(l) + "\n");
+  let text = '';
+
+  // --- Header ---
+  text += centerText(store.storeName || "Groceryon wheels") + '\n';
+  
+  wrapText(store.address, lineWidth).forEach(wrappedLine => {
+      text += centerText(wrappedLine) + '\n';
+  });
+
+  text += centerText(`GST: ${store.gst}`) + '\n';
+  text += centerText(`Phone: ${store.phone}`) + '\n';
+  text += centerText(`Email: ${store.email}`) + '\n';
   text += line;
 
-  text += twoColumn(`Date: ${data.saleDate.substring(0, 10)}`,
-                    `Time: ${data.saleDate.substring(11, 16)}`) + "\n";
-  text += `Customer: ${data.customer?.customerName || "walk-in customer"}\n`;
+  // --- Order Info ---
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN');
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  text += twoColumn(`Date: ${dateStr}`, `Time: ${timeStr}`) + '\n';
+  text +=`Invoice: #${data.saleCode}`+'\n';
+  text+=`Customer: ${data.customer.customerName || 'walk-in customer'}`+'\n';
   text += line;
-
+  // --- Items Table Header ---
+ 
   text += padRight("#", col.sno) +
           padRight("Item", col.item) +
           padLeft ("Qty",  col.qty)  +
           padLeft ("MRP",  col.mrp)  +
           padLeft ("Rate", col.rate) +
           padLeft ("Total",col.total) + "\n";
-
-  data.items.forEach((it, i) => text += formatItemRow(it, i));
+  
+  // --- Items Table Body ---
+  data.items.forEach((item, index) => {
+    console.log("Item",item)
+    text += formatItemRow(item, index);
+  });
   text += line;
-  const additionalCharges=data.additionalPayment.reduce((sum, p) => sum + p.amount, 0);
 
-  const totalQty   = data.items.reduce((s, it) => s + it.quantity, 0);
-  const totalMRP   = data.items.reduce((s, it) => s + it.quantity * it.item.mrp,        0);
-  const totalSale  = data.items.reduce((s, it) => s + it.quantity * it.item.salesPrice, 0);
-  const taxAmt     = data.taxAmount   || 0;
-  const otherChg   = data.otherCharges || 0;
-  const paid       = data.payments.reduce((s, p) => s + p.amount, 0);
-  const prevDue    = data.previousBalance || 0;
-  const grandTotal = totalSale + taxAmt + otherChg + additionalCharges;
-  const totalDue   = prevDue + grandTotal - paid;
+  // --- Full Summary Section ---
+  const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0);
+
+        const rawTotal = data.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+        const disc = data.totalDiscount || 0;
+        const taxAmt = data.taxAmount || 0;
+
+
+        const netBeforeTax = rawTotal - disc;
+        
+const totalM=data.items.reduce((sum, item) => sum + (item.quantity * item.item.mrp), 0);
+const totalSales=data.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+const additionalCharges=data.additionalPayment.reduce((sum, p) => sum + p.amount, 0);
     
-  const sumLine = (lbl, val) => `${padRight(lbl, 34)}${padLeft(val.toFixed(2), 8)}\n`;
+const paid = data.payments.reduce((sum, p) => sum + p.amount, 0);
+      
+const prevDue = data.previousBalance  || 0;
 
-  text += `${padRight("Total Quantity:", 34)}${padLeft(totalQty, 8)}\n`;
-  text += sumLine("Before Tax:",      totalMRP);
-  text += sumLine("Total Discount:",  totalMRP - totalSale);
-  text += sumLine("Net Before Tax:",  totalSale);
-  text += sumLine("Tax Amount:",      taxAmt);
-  text += sumLine("Other Charges:",   otherChg);
-  text += sumLine("Additional Charges:",   additionalCharges);
-  text += sumLine("Total:",           grandTotal);
-  text += sumLine("Paid Payment:",    paid);
-  text += sumLine("Previous Due:",    prevDue);
-  text += sumLine("Total Due:",       totalDue);
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
+
+
+  const addSummaryLine = (label, value) => {
+      return padRight(label, lineWidth - 16) + padLeft(value, 16) + '\n';
+  };
+
+  text += addSummaryLine('Total Quantity:', totalQuantity || 0);
+  text += addSummaryLine('Before Tax:', totalM?.toFixed(2));
+  text += addSummaryLine('Total Discount:', `-${(totalM-totalSales)?.toFixed(2)}`);
+  text += addSummaryLine('Net Before Tax:', totalSales?.toFixed(2));
+  text += addSummaryLine('Tax Amount:', taxAmt?.toFixed(2));
+  text += addSummaryLine('Additional Charges:', additionalCharges?.toFixed(2));
+  if(exclusiveDiscount > 0)
+  text += addSummaryLine('Premium Membership Discount:',`-${exclusiveDiscount?.toFixed(2) || 0}`);
+  
+  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales + additionalCharges - exclusiveDiscount)?.toFixed(2) || 0);
+  text += addSummaryLine('Paid Payment:', paid?.toFixed(2));
+  text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
+  text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
   text += line;
-
-  data.payments.forEach(p =>
-    text += `Payment Type: ${p.paymentType.paymentTypeName} ₹${p.amount.toFixed(2)}\n`
-  );
-  text += line;
-
-  text += centerText("------Thank You & Visit Again!------") + "\n\n\n";
-  console.log(text);
+   data.payments.forEach((p, i) => {
+        text += `Payment Type: ${p.paymentType.paymentTypeName} ₹${p.amount?.toFixed(2)||0}\n`;
+    });
+  // --- Footer ---
+  text += centerText('Thank You & Visit Again!') + '\n\n\n';
+   console.log(text)
   return text;
 };
 
@@ -726,6 +794,9 @@ const formatItemRow = (item, idx) => {
               </NavLink>
             </nav>
           </header>
+           {
+                    showModal && <CardOtpModal sa={sa} isOpen={showModal} onClose={() => {fetchInvoices();setShowModal(false)}}/>
+                  }
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex items-center text-black bg-white rounded-lg shadow-md">
@@ -905,7 +976,7 @@ const formatItemRow = (item, idx) => {
                         <td className="px-2 py-1 border">
                           {typeof inv.customer === 'string' ? inv.customer : inv.customer?.customerName || "N/A"}
                         </td>
-                        <td className="px-2 py-1 border">₹{inv.amount.toFixed(2)}</td>
+                        <td className="px-2 py-1 border">₹{inv.totalAmount.toFixed(2)}</td>
                         <td className="px-2 py-1 border">₹{totalPaid.toFixed(2)}</td>
                         <td className="px-2 py-1 border">{inv.source}</td>
                         <td className="px-2 py-1 border" onClick={()=>handleEditPaymentType(inv)}>
@@ -959,6 +1030,25 @@ const formatItemRow = (item, idx) => {
                                 onClick={() => {handleEdit(inv);setActionMenu(null);}}
                               >
                                 ✏️ Edit
+                              </button>
+                              <button
+                                className="w-full px-2 py-1 text-left text-green-500 hover:bg-gray-100"
+                                onClick={() => {
+
+                                    if(inv.exclusiveDiscount > 0 || inv.premiumCard !== null){
+                          setActionMenu(null)
+                          alert("Exclusive Discount already used  for this invoice.")
+                          return;
+                        }
+                        else{
+                          
+                          setActionMenu(null)
+                          setShowModal(true)
+                          setSa(inv)
+                        }
+                                }}
+                              >
+                                💵 Card Apply                      
                               </button>
                               <button
                                 className="w-full px-2 py-1 text-left text-teal-500 hover:bg-gray-100"

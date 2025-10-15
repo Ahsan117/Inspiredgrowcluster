@@ -31,7 +31,7 @@ const {getItems,getMergedCategoryImages,
   generateMergedImagesForSubSubCategory,
   DifferentiateItemBysubCategory,
   DifferentiateItemBysubsubCategory,
-  assignMasterImageForCategory
+  assignMasterImageForCategory,changeOffer 
 } = require("../controllers/itemController");
 const { authMiddleware, hasPermission } = require("../middleware/authMiddleware");
 const { protect } = require("../middleware/customerauthMiddleware");
@@ -57,6 +57,8 @@ const upload = multer({
 
 // ─── Routes ────────────────────────────────────────────────────
 
+
+router.put("/items/change-offer",changeOffer)
 
 //category
 router.get("/items/getWithCategory",DifferentiateItemByCategory)

@@ -53,14 +53,14 @@ const ViewPayment = () => {
       }
 
       // Find the matching invoice by saleId
-      const matchingInvoice = invoicesResponse.data.find(invoice => invoice._id.toString() === saleId);
+      const matchingInvoice = invoicesResponse.data.data.find(invoice => invoice._id.toString() === saleId);
       if (!matchingInvoice) {
         throw new Error("Invoice not found for this sale ID");
       }
 
       // Use the amount from the invoices API as totalAmount
       const totalAmount = matchingInvoice.amount || 0;
-
+        console.log(paymentResponse.data)
       setPaymentData({
         customer: paymentResponse.data.customer || "N/A",
         saleCode: paymentResponse.data.saleCode || "N/A",
@@ -119,7 +119,7 @@ const ViewPayment = () => {
           <div>
             <h3 className="font-semibold text-gray-700">Sales Details</h3>
             <p>Invoice #: {paymentData.saleCode}</p>
-            <p>Date: {paymentData.saleDate}</p>
+            <p>Date: {paymentData.createdAt}</p>
             <p>Grand Total: ₹{paymentData.totalAmount.toFixed(2)}</p>
           </div>
           <div>

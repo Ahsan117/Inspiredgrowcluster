@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaBars, FaPlus } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { Preferences } from '@capacitor/preferences';
 const AuditorNavbar = ({ isSidebarOpen, setSidebarOpen }) => {
   const link="https://pos.inspiredgrow.in/vps"
   const navigate = useNavigate();
@@ -52,7 +52,14 @@ const AuditorNavbar = ({ isSidebarOpen, setSidebarOpen }) => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    const logout=async()=>{
+         localStorage.clear();
+     await Preferences.remove({ key: "token" });
+  await Preferences.remove({ key: "id" });
+  await Preferences.remove({ key: "role" });
+  await Preferences.remove({ key: "auditId" });
+    }
+    logout();
     navigate("/");
     window.location.reload();
   };
@@ -67,20 +74,7 @@ const AuditorNavbar = ({ isSidebarOpen, setSidebarOpen }) => {
   return (
     <nav className="flex flex-col items-center justify-between gap-2 px-6 py-1 text-white bg-gray-900 md:gap-0 md:flex-row">
       <div className="flex items-center justify-between w-full gap-2 md:w-auto md:bg-transparent">
-        <div className={`w-screen text-center ${isSidebarOpen?"md:w-64":"w-auto"} md:text-center`}>
-          <h2
-            className="text-2xl font-bold text-center cursor-pointer md:w-auto"
-            onClick={() => navigate("/dashboard")}
-          >
-            {/* only these three spans changed text source */}
-            <span className="md:hidden">{headerTitle}</span>
-            {isSidebarOpen ? (
-              <span className="hidden md:flex">{headerTitle}</span>
-            ) : (
-              <span className="hidden md:flex">POS</span>
-            )}
-          </h2>
-        </div>
+        
 
         <div className="flex-col items-center hidden gap-2 md:flex md:flex-row">
           <button
@@ -107,16 +101,7 @@ const AuditorNavbar = ({ isSidebarOpen, setSidebarOpen }) => {
         </div>
 
         <div className="relative flex items-center gap-4">
-          <div>
-            <button
-              className="flex items-center px-2 hover:bg-gray-500"
-              onClick={() => navigate("/pos")}
-            >
-              <FaPlus />
-              POS
-            </button>
-          </div>
-
+          
           <div
             className="flex items-center space-x-2 cursor-pointer"
             onClick={() => setShowDropdown(!showDropdown)}

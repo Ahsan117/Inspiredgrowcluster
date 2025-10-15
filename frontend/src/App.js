@@ -175,8 +175,17 @@ const AccountList1 = lazy(() => import("./components/Accounts/AccountListM/Accou
 const NewItem = lazy(() => import("./components/Items/NewItem"));
 const StockAnalyser = lazy(() => import ("./components/Stock/StockAnalyser/StockAnalyser.jsx"));
 const SellerPoints = lazy(() => import("./components/Reports/SellerPoints"));
+const AddItemsOffer = lazy(() => import("./components/ItemsOffer/AddItemsOffer"));
+const Card = lazy(() => import("./components/card/AddCard"));
 const queryClient=new QueryClient();
-
+const CardTable = lazy(() => import("./components/card/AssignCardInfo"));
+const CardSetting=lazy(()=>import("./components/card/CardSetting"))
+const AllItemsView=lazy(()=>import("./components/card/AllItemsView"))
+const PremiumCardReport=lazy(()=>import("./components/Reports/PremiumCardReport.jsx"))
+const ParticularItemReport=lazy(()=>import("./components/Reports/ParticularItemSale.jsx"))
+const RiderAssignedOrder=lazy(()=>import("./components/Order/OrderList/RiderAssignedOrder.jsx"))
+const VanAssignedOrder=lazy(()=>import("./components/Order/OrderList/VanAssignedOrder.jsx"))
+const POSForOrder=lazy(()=>import ("./components/Order/POSForOrder/POSM.jsx"))
 function App() {
 
 
@@ -341,18 +350,20 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <BackButtonHandler />
          <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
       <Routes>
+        <Route path="/add-items-offer" element={<AddItemsOffer />} />
               <Route path="/sale-location" element={<SaleLocation />} />
          <Route path="/account-list1" element={<AccountList1 />} />
-
+         <Route  path="/card" element={<Card />} />
+         <Route  path="/premium-card-report" element={<PremiumCardReport />} />
+          <Route  path="/card-table" element={<CardTable />} />
+          <Route  path="/all-items-view" element={<AllItemsView />} />
+          <Route  path="/card-setting" element={<CardSetting />} />
           <Route path="/print" element={<Print />} />
         <Route path="/printer-settings" element={<PrinterSettings />} />
           {/* POSM */}
          <Route path="/pos-main" element={<POSM />}/>
          <Route path="/purchase-main" element={<PurchaseM />}/>
          <Route path="/stock-main" element={<Sm />}/>
-         
- 
-
         <Route path="/admin-register" element={<AdminRegister />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/" element={<UserLogin />} />
@@ -421,6 +432,7 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/reports/stock" element={<StockReport />} />
         <Route path="/reports/item-compare" element={<ItemCompare />} />
         <Route path="/reports/item-transfer" element={<ItemTransfer />} />
+        <Route path="/reports/particular-item" element={<ParticularItemReport />} />
         <Route path="/add-advance" element={<AddAdvance />} />
         <Route path="/advance-list" element={<AdvanceList />} />
         <Route path="/customer/coupon/view" element={<CustomerCoupenList />} />
@@ -500,7 +512,10 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/admin/deletion-requests" element={<DeletionRequests />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
         <Route path="/order/view" element={<OrderList />} />
-
+        <Route path="/order/view/rider-assigned" element={<RiderAssignedOrder />} />
+        <Route path="/order/view/van-assigned" element={<VanAssignedOrder />} />
+        <Route path="/order/pos-create" element={<POSForOrder />} />
+          
         <Route path="/delivery-slot/create" element={<DeliverySlotCreate />} />
         <Route path="/delivery-slot/view" element={<DeliverySlotList />} />
         

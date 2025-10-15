@@ -101,7 +101,7 @@ const UserLogin = () => {
     try {
       
       const res = await axios.post(
-        "https://pos.inspiredgrow.in/vps/admiaddinguser/userloginByUserName",
+         "https://pos.inspiredgrow.in/vps/admiaddinguser/userloginByUserName",
         {
           username:user.username,
           password:user.password

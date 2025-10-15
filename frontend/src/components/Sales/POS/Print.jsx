@@ -60,8 +60,8 @@ const ReceiptPage = ({
     // --- Bluetooth Functions ---
 
 const generatePlainTextReceipt = () => {
-  const { order, customer, store, payments } = mockData;
-   console.log("Mock Data",mockData)
+  const { order, customer, store, payments ,exclusiveDiscount} = mockData;
+  //  console.log("Mock Data",mockData)
   const lineWidth = 42; // Standard for 3-inch (80mm) Epson P80 printers
   const line = '-'.repeat(lineWidth) + '\n';
 
@@ -124,7 +124,7 @@ const generatePlainTextReceipt = () => {
   // =================================================================
    
 const formatItemRow = (item, idx) => {
-  console.log("Item in formatItemRow",item)
+  // console.log("Item in formatItemRow",item)
   const lines = wrapText(item.itemName, col.item).slice(0, 4); // up to 4 lines
   let txt = '';
   lines.forEach((ln, i) => {
@@ -182,7 +182,7 @@ const formatItemRow = (item, idx) => {
   
   // --- Items Table Body ---
   order.rows.forEach((item, index) => {
-    console.log("Item",item)
+    // console.log("Item",item)
     text += formatItemRow(item, index);
   });
   text += line;
@@ -203,12 +203,14 @@ const formatItemRow = (item, idx) => {
 const totalM=order.rows.reduce((sum, item) => sum + (item.quantity * item.mrp), 0);
 const totalSales=order.rows.reduce((sum, item) => sum + (item.quantity * item.salesPrice), 0);
 
-
-const paid = payments.reduce((sum, p) => sum + p.amount, 0);
+ console.log("payments", payments)
+ const paid = payments.reduce((sum, p) => sum + p.amount, 0);
+ console.log("payments", paid)
       
 const prevDue = order.previousBalance  || 0;
-
-const totalDue = prevDue + netBeforeTax + taxAmt - paid;
+console.log("prevDue", prevDue)
+console.log(netBeforeTax,taxAmt,paid)
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
    const additionalCharges=order.additionalPayment.reduce((sum, p) => sum + p.amount, 0);
     
   const addSummaryLine = (label, value) => {
@@ -221,8 +223,11 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid;
   text += addSummaryLine('Net Before Tax:', totalSales?.toFixed(2));
   text += addSummaryLine('Tax Amount:', taxAmt?.toFixed(2));
   text += addSummaryLine('Additional Charges:',additionalCharges?.toFixed(2) || 0);
-  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales+ additionalCharges)?.toFixed(2) || 0);
-  text += addSummaryLine('Paid Payment:', paid?.toFixed(2));
+  if(exclusiveDiscount > 0)
+  text += addSummaryLine('Premium Membership Discount:',`-${exclusiveDiscount?.toFixed(2) || 0}`);
+  
+  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales+ additionalCharges - exclusiveDiscount)?.toFixed(2) || 0);
+  text += addSummaryLine('Paid Payment:', (paid)?.toFixed(2));
   text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
   text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
   text += line;
@@ -382,7 +387,7 @@ const handleDownload = async () => {
     
     // --- This function generates the on-screen view ---
     const generateReceiptHtml = () => {
-        const { order, customer, seller, store, payments, dues } = mockData;
+        const { order, customer, seller, store, payments, dues ,exclusiveDiscount} = mockData;
          console.log("1")
          
         const totalQuantity = order.rows.reduce((sum, item) => sum + item.quantity, 0);
@@ -403,8 +408,8 @@ const paid = payments.reduce((sum, p) => sum + p.amount, 0);
       
 const prevDue = order.previousBalance  || 0;
 
-const totalDue = prevDue + netBeforeTax + taxAmt - paid;
-
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
+ 
 const finalTotal = netBeforeTax + taxAmt;
         console.log(7)
      
@@ -474,8 +479,9 @@ console.log(8)
                         <tr><td>Net Before Tax</td><td class="r">${totalSales?.toFixed(2) || 0}</td></tr>
                         <tr><td>Tax Amount</td><td class="r">${taxAmt?.toFixed(2) || 0}</td></tr>
                         <tr><td>Additional Charges</td><td class="r">${additionalCharges?.toFixed(2) || 0}</td></tr>
-                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales+additionalCharges)?.toFixed(2) || 0}</strong></td></tr>
-                        <tr><td>Paid Payment</td><td class="r">${paid?.toFixed(2) || 0}</td></tr>
+                        ${exclusiveDiscount > 0 && (`<tr><td>Premium Membership Discount</td><td class="r">−${exclusiveDiscount?.toFixed(2) || 0}</td></tr>`)}
+                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales+additionalCharges-exclusiveDiscount)?.toFixed(2) || 0}</strong></td></tr>
+                        <tr><td>Paid Payment</td><td class="r">${(paid)?.toFixed(2) || 0}</td></tr>
                         <tr><td>Previous Due</td><td class="r">${prevDue?.toFixed(2) || 0}</td></tr>
                         <tr><td><strong>Total Due Amount</strong></td><td class="r"><strong>${totalDue?.toFixed(2) || 0}</strong></td></tr>
                     </table>

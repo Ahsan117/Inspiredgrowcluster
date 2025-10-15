@@ -32,7 +32,7 @@ import { POSContext } from "../../../context/POSContext";
 import { set } from "date-fns";
 
 
-function buildInvoiceHTML(order, payments = [], store, cust, rows, sellerName = "–", setPrint, setActiveTab) {
+function buildInvoiceHTML(order, payments = [], store, cust, rows, sellerName = "–", setPrint, setActiveTab,exclusiveDiscount=0) {
   const {
     logo, storeName, tagline, address, gst, phone, email
   } = store;
@@ -71,7 +71,7 @@ function buildInvoiceHTML(order, payments = [], store, cust, rows, sellerName = 
   ).join("");
 
   const payRows = payments.map((p, i) => `
-    <tr><td>${i + 1}</td><td>${p.paymentNote || "-"}</td><td class="r">${(p.amount)}</td></tr>`
+    <tr><td>${i + 1}</td><td>${p.paymentNote || "-"}</td><td class="r">${(p.amount-exclusiveDiscount)}</td></tr>`
   ).join("");
   
   // REMOVED THE ALERT
@@ -96,7 +96,8 @@ function buildInvoiceHTML(order, payments = [], store, cust, rows, sellerName = 
     },
     customer: {customerName: cust.customerName || "–"},
     seller: {sellerName: sellerName},
-    dues: { previousDue: totalDue }
+    dues: { previousDue: totalDue },
+    exclusiveDiscount:exclusiveDiscount
   }); 
   // This will now correctly switch to the print view after the state has been set.
   // setActiveTab("print");
@@ -124,7 +125,7 @@ let watchId=""
     if (position?.coords) {
       const { latitude, longitude } = position.coords;
       console.log("Got location:", latitude, longitude);
-      return [longitude, latitude]; // GeoJSON expects [lng, lat]
+      return [latitude,longitude]; // GeoJSON expects [lng, lat]
     }
 
     return [0, 0]; // fallback
@@ -203,7 +204,7 @@ let watchId=""
   const [defaultWarehouse, setDefaultWarehouse]   = useState("");
   const prevWarehouseRef = useRef();    
   const[print,setPrint]=useState({})
-
+  const [exclusiveDiscount, setExclusiveDiscount] = useState(0);
 
    
     
@@ -211,6 +212,20 @@ let watchId=""
   const authHeaders = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   });
+  
+
+ async function fetchLiveQty (warehouseId, invId) {
+  if (!warehouseId || !invId) return 0;
+  const { data } = await axios.get(
+    `${link}/api/stock/${invId}?warehouse=${warehouseId}`,
+    authHeaders()
+  );
+  /* fall back to openingStock if qty hasn’t moved yet */
+  return (data.currentStock ?? data.openingStock ?? 0);
+}
+
+
+
   
   const getPaymentTypeId = (name) =>
     paymentTypes.find((pt) => pt.paymentTypeName?.toLowerCase() === name.toLowerCase())?._id;
@@ -456,9 +471,9 @@ if (data) {
   
 
   // ─── EDIT HYDRATION ─────────────────────────────────────────────────
-  function hydrateForEdit(inv) {
+ async function hydrateForEdit(inv) {
     console.log("Hydrating POS order:", inv);
-
+        setExclusiveDiscount(inv.exclusiveDiscount || 0);
     let detectedPaymentMode = inv.paymentMode || "";
     if (!detectedPaymentMode) {
       if (inv.status === "OnHold") {
@@ -480,8 +495,9 @@ if (data) {
       }
     }
 
-    const items = inv.items
-      .map((i) => {
+       const itemsWithLiveStock = await Promise.all(
+    inv.items
+      .map(async (i) => {
         const itemDoc = allItems.find(
           (ai) =>
             ai.parentId === i.item._id &&
@@ -490,38 +506,43 @@ if (data) {
         );
         if (!itemDoc) {
           console.warn("Invalid item in POS order:", {
-            itemId: i.item._id,
+            itemId: i.item?._id,
             variantId: i.variant,
-            itemName: i.item.itemName,
+            itemName: i.item?.itemName,
             warehouseId: inv.warehouse?._id,
           });
           return null;
         }
+        const liveQty = await fetchLiveQty(inv.warehouse._id, i.variant || i.item._id);
         return {
+          category: itemDoc.category || null,
+          brand: itemDoc.brand || null,
+          description: i.item.description || itemDoc.description || "",
+          barcodes: itemDoc.barcodes || [],
+          purchasePrice: itemDoc.purchasePrice || 0,
           item: i.item._id,
           variant: i.variant || null,
           itemName: itemDoc.itemName,
           itemCode: itemDoc.itemCode || "",
-          stock: itemDoc.currentStock || 0,
-          discountPolicy: itemDoc.discountPolicy || "None",
-          requiredQty: itemDoc.requiredQuantity || 0,
-          freeQty: itemDoc.freeQuantity || 0,
-          openingStock: itemDoc.currentStock || 0,
+          openingStock: itemDoc.openingStock || 0,
+          stock: liveQty,
+          currentStock: liveQty,
           salesPrice: i.price || itemDoc.salesPrice || 0,
           quantity: i.quantity || 1,
+          origQty: i.quantity || 1,
           discount: i.discount || 0,
           tax: i.tax?._id || itemDoc.tax?._id || null,
           taxRate: i.tax?.taxPercentage || itemDoc.tax?.taxPercentage || 0,
           unit: i.unit || itemDoc.unit || null,
-          mrp: itemDoc.mrp || 0,
+          mrp: i.mrp || itemDoc.mrp || 0,
           expiryDate: itemDoc.expiryDate || null,
           subtotal:
             i.subtotal || (i.price || itemDoc.salesPrice || 0) * (i.quantity || 1) - (i.discount || 0),
         };
       })
-      .filter((i) => i !== null);
+  );
 
-    setItems(items);
+    setItems(itemsWithLiveStock);
     setInvoiceCode(inv.saleCode || "");
     setInvoiceCount(inv.invoiceCount || 0);
     setPreviousBalance(inv.previousBalance || 0);
@@ -562,7 +583,7 @@ if (data) {
     setOrderPaymentMode(detectedPaymentMode);
   }
 
-  // ─── EFFECTS ────────────────────────────────────────────────────────
+  // calculate totals 
   useEffect(() => {
     let qty = 0,
       amt = 0,
@@ -579,12 +600,16 @@ if (data) {
     setTotalDiscount(disc);
   }, [items,additionalPaymentAmount]);
   
+
+
+  
 useEffect(() => {
   const q = searchItemCode.trim();
   if (!q || !selectedWarehouse) return setFilteredItems([]);
 
   const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-
+  console.log(allItems)
+  console.log("Filtering items with query:", q, "in warehouse:", selectedWarehouse);
   const filtered = allItems
     .filter((it) => {
       const inWarehouse = it.warehouse?._id === selectedWarehouse;
@@ -599,24 +624,29 @@ useEffect(() => {
     .slice(0,20)
 
   setFilteredItems(filtered);
-  console.log("Search query:", q);
   console.log("Filtered items:", filtered);
 }, [searchItemCode, selectedWarehouse, allItems]);
 
 
   
-
+ //find customer previous balance
   useEffect(() => {
     const c = customers.find((c) => c._id === selectedCustomer);
     setPreviousBalance(c?.previousDue || 0);
   }, [selectedCustomer, customers]);
 
+
+
+//for account when warehouse changes
   useEffect(() => {
     const w = warehouses.find((w) => w._id === selectedWarehouse);
     if (w?.cashAccount?._id) setSelectedAccount(w.cashAccount._id);
     else if (accounts.length) setSelectedAccount(accounts[0]?._id);
   }, [selectedWarehouse, warehouses, accounts]);
 
+
+
+  //find total number of items customers etc  are  loaded before hydrating 
  useEffect(() => {
   const ready = 
     orderToEdit &&
@@ -641,26 +671,7 @@ useEffect(() => {
   setOrderToEdit(null);
 }, [orderToEdit, customers, warehouses, accounts, paymentTypes, allItems]);
 
-// useEffect(() => {
-//   if (editId) return;                  // skip if we’re editing an existing order
-//   if (!warehouses.length) return;      // need the list loaded
-//   // if (defaultWarehouse) {
-//   //   // user has a default → honor it
-//   //   setSelectedWarehouse(defaultWarehouse);
-//   // } else {
-//   //   // fallback to restricted / first active
-//   //   const restricted = warehouses.find(
-//   //     (w) => w.isRestricted && w.status === "Active"
-//   //   );
-//   //   setSelectedWarehouse(
-//   //     restricted?._id ||
-//   //       warehouses.find((w) => w.status === "Active")?._id ||
-//   //       ""
-//   //   );
-//   // }
-// }, [warehouses, defaultWarehouse, editId]);
 
- 
 
 
 
@@ -688,17 +699,26 @@ function applyOfferLogic(itemList) {
 }
 
   // ─── ITEM HANDLERS ─────────────────────────────────────────────────
-function addItem(it) {
+async function addItem(it) {
  
   if (!it || !it.parentId) {
     console.error("Invalid item, missing parentId:", it);
     return;
   }
- if(it.currentStock<=0){
-  alert("Item out of stock");
-  setSearchItemCode("");
-  return;
- }
+
+
+   const liveQty = await fetchLiveQty(selectedWarehouse, it.variantId || it._id);
+   it.currentStock=liveQty;
+    if (liveQty <= 0) {
+    Swal.fire("Out of stock", `"${it.itemName}" is out of stock in this warehouse.`, "warning");
+    return;
+  }
+  if (!it || !it.parentId) {
+    console.error("Invalid item, missing parentId:", it);
+    return;
+  }
+
+  
   const parentExists = allItems.some(
     (ai) => ai._id === it.parentId && !ai.variantId
   );
@@ -751,6 +771,11 @@ function addItem(it) {
   } else {
     playSound("/sounds/item-added.mp3");
     const newItem = {
+      barcode: it.barcode || "",
+      barcodes: it.barcodes || [],
+      category: it.category || null,
+      brand: it.brand || null,
+      offer:it.offer,
       discountPolicy: it.discountPolicy || "None",
       requiredQty: it.requiredQuantity || 0,
       freeQty: it.freeQuantity || 0,
@@ -770,23 +795,28 @@ function addItem(it) {
       unit: it.unit || null,
       mrp: it.mrp || 0,
       expiryDate: it.expiryDate || null,
-      subtotal:
-        quantityToAdd * (it.salesPrice || 0) - (0),
+      subtotal: quantityToAdd * (it.salesPrice || 0) - (0),
+      description: it.description || "",
+      purchasePrice: it.purchasePrice || 0,
     };
 
     if (newItem.salesPrice <= 0) {
       alert("Item sales price must be greater than zero.");
       return;
     }
-
-    const updatedWithNewItem = [...items, newItem];
+   console.log(newItem)
+    const updatedWithNewItem = [newItem,...items];
     const updatedWithOffer = applyOfferLogic(updatedWithNewItem); // 🔁 OFFER HERE
    
     setItems(updatedWithOffer);
     setSearchItemCode("");
   }
 }
-function addItemsInBatch(matchedItems) {
+
+
+
+
+async function addItemsInBatch(matchedItems) {
   let updated = [...items];
 
   for (const it of matchedItems) {
@@ -794,6 +824,10 @@ function addItemsInBatch(matchedItems) {
       console.error("Invalid item, missing parentId:", it);
       continue;
     }
+
+
+    const liveQty = await fetchLiveQty(selectedWarehouse, it.variantId || it._id);
+   it.currentStock=liveQty;
     if(it.currentStock<=0){
       continue;
     }
@@ -839,6 +873,8 @@ function addItemsInBatch(matchedItems) {
     } else {
       playSound("/sounds/item-added.mp3");
       const newItem = {
+        description: it.description || "",
+        offer:it.offer ,
         discountPolicy: it.discountPolicy || "None",
         requiredQty: it.requiredQuantity || 0,
         freeQty: it.freeQuantity || 0,
@@ -858,6 +894,7 @@ function addItemsInBatch(matchedItems) {
         unit: it.unit || null,
         mrp: it.mrp || 0,
         expiryDate: it.expiryDate || null,
+        purchasePrice: it.purchasePrice || 0,
         subtotal:
           quantityToAdd * (it.salesPrice || 0) - (0),
       };
@@ -867,7 +904,8 @@ function addItemsInBatch(matchedItems) {
         continue;
       }
 
-      updated.push(newItem);
+      updated.unshift(newItem);
+
     }
   }
 
@@ -877,10 +915,10 @@ function addItemsInBatch(matchedItems) {
 }
 
 
-function updateItem(idx, field, val) {
+async function updateItem(idx, field, val) {
   const numericVal = Number(val);
   const row = items[idx];
-
+  console.log(row)
   // ❗ Prevent salesPrice > MRP
   if (field === "salesPrice" && numericVal > row.mrp) {
     alert(`❗ Sales Price (${numericVal}) cannot exceed the MRP (${row.mrp})`);
@@ -893,8 +931,11 @@ function updateItem(idx, field, val) {
     return;
   }
 
-  // ❗ Prevent quantity > currentStock
-  if (field === "quantity" && numericVal > row.stock) {
+  
+  if (field === "quantity") {
+      const liveQty = await fetchLiveQty(selectedWarehouse, row.variant || row.item);
+    const available = (row.origQty || 0) + liveQty;
+    if(numericVal > available) 
     return;
   }
 
@@ -1026,7 +1067,7 @@ function updateItem(idx, field, val) {
   };
 
   // ─── PAYMENT / ORDER LOGIC ──────────────────────────────────────────
- function buildPayload({l, status, payments, paymentMode }) {
+ async function buildPayload({l, status, payments, paymentMode }) {
     console.log("Building payload with:", {
       selectedWarehouse,
       selectedCustomer,
@@ -1046,47 +1087,71 @@ function updateItem(idx, field, val) {
       throw new Error("Account is required");
     }
    console.log("Please fill all required fields");
-    const validItems = items
-      .map((it) => {
-        const isValid = allItems.some(
-          (ai) =>
-            ai.parentId === it.item &&
-            (!it.variant || ai._id === it.variant || ai.variantId === it.variant)
-        );
-        if (!isValid) {
-          console.error("Invalid item in payload:", {
-            itemId: it.item,
-            variantId: it.variant,
-            itemName: it.itemName,
-            itemCode: it.itemCode,
-          });
-          return null;
-        }
-        if (it.quantity <= 0 || it.salesPrice <= 0) {
-          console.error("Invalid quantity or price for item:", {
-            itemId: it.item,
-            itemName: it.itemName,
-            quantity: it.quantity,
-            price: it.salesPrice,
-          });
-          return null;
-        }
-        return {
-          item: it.item,
-          variant: it.variant,
-          quantity: it.quantity,
-          price: it.salesPrice,
-          discount: it.discount || 0,
-          unit: it.unit,
-          tax: it.tax,
-          subtotal: it.subtotal,
-        };
-      })
-      .filter((it) => it !== null);
-
+   
+   
+   
+  const validItems = items
+    .map((it) => {
+      const isValid = allItems.some(
+        (ai) =>
+          ai.parentId === it.item &&
+          (!it.variant || ai._id === it.variant || ai.variantId === it.variant) &&
+          ai.warehouse?._id === selectedWarehouse
+      );
+      if (!isValid) {
+        console.error("Invalid item in payload:", {
+          itemId: it.item,
+          variantId: it.variant,
+          itemName: it.itemName,
+          itemCode: it.itemCode,
+        });
+        return null;
+      }
+      return {
+        item: it.item,
+        variant: it.variant || null,
+        quantity: it.quantity,
+        origQty: it.origQty,
+        price: it.salesPrice,
+        discount: it.discount || 0,
+        unit: it.unit,
+        tax: it.tax,
+        subtotal: it.subtotal,
+      }; 
+    })
+    .filter((it) => it !== null);
+  
+  
     if (validItems.length === 0) {
       throw new Error("No valid items to save. Please add valid items to the order.");
     }
+
+    
+    const stockErrors = [];
+
+     for (const it of validItems) {
+    const liveQty = await fetchLiveQty(selectedWarehouse, it.variant || it.item);
+    const previousQty = it.origQty || 0;
+    const liveAvailable = liveQty + previousQty;
+    if (it.quantity > liveAvailable) {
+      const name = items.find(r => r.item === it.item && r.variant === it.variant)?.itemName || "Item";
+      stockErrors.push(
+        `"${name}" – requested ${it.quantity}, available ${liveAvailable}`
+      );
+    }
+  }
+
+
+  
+    if (validItems.length === 0) {
+      throw new Error("No valid items to save. Please add valid items to the order.");
+    }
+    
+     if (stockErrors.length) {
+
+    throw new Error("Stock validation failed");
+  }
+    
     
     const totalOther=additionalPaymentAmount.reduce((sum, p) => sum + (p.amount || 0), 0);
   
@@ -1098,7 +1163,8 @@ function updateItem(idx, field, val) {
       items: validItems,
       additionalCharges: additionalCharges,
       additionalPayment: additionalPaymentAmount,
-      totalAmount: totalAmount - totalDiscount + additionalCharges,
+      exclusiveDiscount: exclusiveDiscount,
+      totalAmount: totalAmount - totalDiscount + additionalCharges - exclusiveDiscount + totalOther,
       totalDiscount,
       couponCode: couponCode || undefined,
       payments,
@@ -1114,10 +1180,10 @@ function updateItem(idx, field, val) {
     return payload;
   }
 
-  async function sendOrder(payload, method = "post", id) {
+  async function sendOrder(payloadParams, method = "post", id) {
   try {
+    const payload = await buildPayload(payloadParams);
     console.log("Sending order with payload:", payload);
-    
     /* ---- 2️⃣ Save the order ---- */
     const url  = id ? `${link}/api/pos/${id}` : `${link}/api/pos`;
     const { data } = await axios[method](url, payload, authHeaders());
@@ -1132,7 +1198,7 @@ function updateItem(idx, field, val) {
       custObj,
       items,
       sellerDisplayName(user),
-      setActiveTab,setPrint          
+      setActiveTab,setPrint,exclusiveDiscount          
     );
     console.log("Generated invoice HTML:", r);
     setPrint(r);
@@ -1273,7 +1339,7 @@ function updateItem(idx, field, val) {
 
       const payment = {
         paymentType: paymentTypeId,
-        amount: totalAmount - totalDiscount+additionalCharges,
+        amount: totalAmount - totalDiscount+additionalCharges-exclusiveDiscount,
         paymentNote: `${mode.charAt(0).toUpperCase() + mode.slice(1)} payment`,
       };
 
@@ -1285,12 +1351,7 @@ function updateItem(idx, field, val) {
       const p=await getLocation();
       try {
         sendOrder(
-          buildPayload({
-            l:p,
-            status: "Completed",
-            payments: [payment],
-            paymentMode: mode,
-          }),
+          {status: "Completed", payments: [payment], paymentMode: mode, l:p},
           currentOrderId ? "put" : "post",
           currentOrderId
         );
@@ -1459,10 +1520,10 @@ function updateItem(idx, field, val) {
                            filteredItems={filteredItems} scanning={scanning} setScanning={setScanning}  orderPaymentMode={orderPaymentMode}    
                           previousBalance={previousBalance}
            />}
-           {activeTab==="pos2" && <POS2 addItemsInBatch={addItemsInBatch} matchedItems={matchedItems} setMatchedItems={setMatchedItems}  searchItemCode={searchItemCode} setActiveTab={setActiveTab} setSearchItemCode={setSearchItemCode} updateItem={updateItem} removeItem={removeItem} items={items} setItems={setItems} 
+           {activeTab==="pos2" && <POS2 updateItem={updateItem} addItemsInBatch={addItemsInBatch} matchedItems={matchedItems} setMatchedItems={setMatchedItems}  searchItemCode={searchItemCode} setActiveTab={setActiveTab} setSearchItemCode={setSearchItemCode}  removeItem={removeItem} items={items} setItems={setItems} 
                                             allItems={allItems} addItem={addItem}  setScanning={setScanning} selectedWarehouse={selectedWarehouse}  filteredItems={filteredItems} scanning={scanning} orderPaymentMode={orderPaymentMode}    
            />}
-           {activeTab==="pos3" && <POS3 additionalCharges={additionalCharges} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} setItems={setItems} isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting} allItems={allItems} showHoldList={showHoldList} heldInvoices={heldInvoices} handleEditInvoice={handleEditInvoice}
+           {activeTab==="pos3" && <POS3 exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} setItems={setItems} isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting} allItems={allItems} showHoldList={showHoldList} heldInvoices={heldInvoices} handleEditInvoice={handleEditInvoice}
            handleDeleteInvoice={handleDeleteInvoice} selectedWarehouse={selectedWarehouse} warehouses={warehouses} setSelectedWarehouse={setSelectedWarehouse}  setActiveTab={setActiveTab}
            invoiceCode={invoiceCode} selectedCustomer={selectedCustomer} setSelectedCustomer={setSelectedCustomer} searchItemCode={searchItemCode} setSearchItemCode={setSearchItemCode}  addItem={addItem}
            filteredItems={filteredItems}  scanning={scanning} setScanning={setScanning} orderPaymentMode={orderPaymentMode} items={items} updateItem={updateItem} removeItem={removeItem}

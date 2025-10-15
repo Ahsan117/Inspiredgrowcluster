@@ -1,6 +1,6 @@
 import React from 'react'
 import Select from 'react-select'
-import { useState,useEffect } from 'react'
+import { useState,useEffect ,useCallback} from 'react'
 import axios, { all } from 'axios'
 import { useNavigate } from 'react-router-dom'
 import Navbar from "../Navbar.jsx";
@@ -12,12 +12,15 @@ import { CameraIcon } from '@heroicons/react/solid'
 import { BrowserMultiFormatReader } from "@zxing/library";
 import { useRef } from 'react'
 import AuditorNavbar from './AuditorNavBar.jsx'
-
+import Scan from './Scan.jsx'
+import playSound from "../../utility/sound"
 import { useSearchParams } from 'react-router-dom'
 const  BucketCreate=()=> {
   const link="https://pos.inspiredgrow.in/vps"
     const [searchParams] = useSearchParams();
-    const id = searchParams.get("id") || null;
+    const [scan,setScan]=useState(false)
+    
+    const[id,setId]=useState(searchParams.get("id") || null)
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const[result,setResult]=useState("")
     const[scanning,setScanning]=useState(false)
@@ -39,6 +42,20 @@ const  BucketCreate=()=> {
      })
 
 
+  const playBeep = useCallback(() => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(2.0, audioContext.currentTime);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.15);
+  }, []);
+
+  
      const fetchItems = async () => {
         try {
             const response = await axios.get(`${link}/api/audit/items`,{
@@ -190,6 +207,7 @@ const  BucketCreate=()=> {
     
 
              useEffect(() => {
+              console.log("sss",selectedItem)
                setTotalItems(selectedItem.length);
                setTotalQuantity(selectedItem.reduce((sum, item) => sum + item.quantity, 0));
              }, [selectedItem]);
@@ -205,6 +223,8 @@ const  BucketCreate=()=> {
            })
          : [];
   let allow;
+
+  
   useEffect(()=>{
     allow=result==""?false:true;
   },[result])
@@ -215,8 +235,8 @@ const  BucketCreate=()=> {
   const itemExist = items.find(
     item =>
       item._id === result ||
-      item.itemName.toLowerCase() === result.toLowerCase() ||
-      item.barcodes.includes(result)
+      item.itemName?.toLowerCase() === result.toLowerCase() ||
+      item.barcodes?.includes(result)
   );
 
   if (!itemExist) return;
@@ -231,8 +251,10 @@ const  BucketCreate=()=> {
         ...updated[existingIndex],
         quantity: updated[existingIndex].quantity + 1,
       };
+      playSound("/sounds/item-exists.mp3");
       return updated;
     } else {
+      playSound("/sounds/item-added.mp3");
       return [
         ...prev,
         {
@@ -261,15 +283,21 @@ const  BucketCreate=()=> {
   });
  }
 
+
+
+ 
 const handleRemoveUser = (ind) => {
-  setSelectedItem(selectedItem.filter((item,index)=> index != ind))
+  setSelectedItem(selectedItem.filter((item,index)=> index !== ind))
 };
+
+
+
 
 const handleSubmit = async (e) => {
   e.preventDefault();
    try {
     console.log("Submitting audit with data:", formData);
-
+        console.log(formData)
     if(!id){
 
        const response = await axios.post(`${link}/api/audit/bucket/create`, formData, {
@@ -278,10 +306,10 @@ const handleSubmit = async (e) => {
       }
     });
     console.log("Bucket Created successfully:", response.data);
-    setFormData({
-      auditorId:"",
+    setFormData((prev)=>({
+      ...prev,
       items:[]
-    });
+    }));
     setSelectedItem([]);
     id?alert("Bucket Updated successfully"):alert("Bucket Created successfully");;
     return;
@@ -296,10 +324,10 @@ const handleSubmit = async (e) => {
       }
     });
     console.log("Bucket updated successfully:", response.data);
-    setFormData({
-      auditorId:"",
+    setFormData((prev)=>({
+      ...prev,
       items:[]
-    });
+    }));
     setSelectedItem([]);
     id?alert("Bucket Updated successfully"):alert("Bucket Created successfully");;
    } catch (error) {
@@ -313,6 +341,8 @@ const handleSubmit = async (e) => {
 
 
 
+
+if(scan) return <Scan setScan={setScan} allItems={items} setSelectedItem={setSelectedItem} />
   return (
     <div className="flex flex-col h-screen">
       <AuditorNavbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -354,7 +384,7 @@ const handleSubmit = async (e) => {
                                      <input type="text" name="type" className="w-full px-2 py-1 border-2 rounded-md"  value={selecteditemname} onChange={(e)=>{setResult(e.target.value) ; setSelecteditemName(e.target.value)}}/>
                                      <button type="button"
                          className="p-2 ml-2 text-white rounded-full hover:bg-blue-600" 
-                         onClick={() => setScanning(true)}
+                         onClick={() => setScan(true)}
                        >
                          <CameraIcon className="w-6 h-6 text-gray-500" />
                        </button>
@@ -377,36 +407,6 @@ const handleSubmit = async (e) => {
                      </ul>
                    </div>
                  )}
-                   {scanning && (
-                   <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-50">
-                     <div className="relative overflow-hidden border-4 border-white rounded-lg shadow-xl w-72 h-72">
-                       <video
-                         ref={videoRef}
-                         className="absolute object-cover w-full h-full"
-                         autoPlay
-                         muted
-                         playsInline
-                       />
-                       <div className="absolute w-full h-1 bg-red-500 animate-scan" />
-                     </div>
-                     <button
-                       onClick={() => {
-                         const stream = videoRef.current?.srcObject;
-                         stream?.getTracks().forEach((track) => track.stop());
-                 
-                         if (codeReaderRef.current?.reset && typeof codeReaderRef.current.reset === "function") {
-                           codeReaderRef.current.reset();
-                         }
-                 
-                         setScanning(false);
-                       }}
-                       className="px-4 py-2 mt-6 text-white bg-red-600 rounded hover:bg-red-700"
-                     >
-                       Cancel
-                     </button>
-                   </div>
-                 )}
-                 
                                      </div>
 
 

@@ -5,26 +5,23 @@ import axios, { all } from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable'; // Removed to fix build error
 import * as XLSX from 'xlsx';
-import { BrowserMultiFormatReader } from '@zxing/library';
 import Navbar from '../Navbar';
 import Sidebar from '../Sidebar';
 import autoTable from 'jspdf-autotable';
-import { FixedSizeList as List } from 'react-window';
 import ItemDetailsPopup from './ItemsView';
-import { set } from 'date-fns';
 import ClubStockView from './ClubStockView';
-const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
+// const MenuIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
-const CameraIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>;
+// const CameraIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>;
 const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
 const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
 const FilterIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>;
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 const ExcelIcon = () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 const PdfIcon = () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
-const CustomerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
-const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
-const CategoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V2l6 .05"></path><path d="M22 8h-6"></path><path d="M16 2v6"></path><path d="M12.55 8.5A2.5 2.5 0 0 1 15.05 6"></path><path d="M12.55 13.5A2.5 2.5 0 0 1 15.05 11"></path><path d="M12.55 18.5A2.5 2.5 0 0 1 15.05 16"></path></svg>;
+// const CustomerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+// const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+// const CategoryIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-500"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V2l6 .05"></path><path d="M22 8h-6"></path><path d="M16 2v6"></path><path d="M12.55 8.5A2.5 2.5 0 0 1 15.05 6"></path><path d="M12.55 13.5A2.5 2.5 0 0 1 15.05 11"></path><path d="M12.55 18.5A2.5 2.5 0 0 1 15.05 16"></path></svg>;
 
 // --- Custom Hook for Debouncing input ---
 function useDebounce(value, delay) {
@@ -59,25 +56,25 @@ const ClubReportPage = () => {
     const [selectedWarehouse, setSelectedWarehouse] = useState("all");
     const[selectedWarehouseName,setSelectedWarehouseName]=useState("All");
     const [category, setCategory] = useState("all");
-    const [searchItem, setSearchItem] = useState("all");
+    // const [searchItem, setSearchItem] = useState("all");
     const [searchItemName, setSearchItemName] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
-    const [saleItems,setSaleItems] = useState([]); 
+    // const [saleItems,setSaleItems] = useState([]); 
     const[report,setReport]=useState([]);
     const[finalReport,setFinalReport]=useState([]);  
     const[allItems,setAllItems]=useState([]);
     // UI States
-    const [result, setResult] = useState(""); // For item search dropdown
-    const [scanning, setScanning] = useState(false);
+    // const [result, setResult] = useState(""); // For item search dropdown
+    // const [scanning, setScanning] = useState(false);
     const [showExportDropdown, setShowExportDropdown] = useState(false);
     const [filtersVisible, setFiltersVisible] = useState(false); // Filters collapsed by default on mobile
-    const debouncedSearchTerm = useDebounce(searchItemName, 500); // 500ms delay
-const [filteredTransfers, setFilteredTransfers] = useState([]);
+    // const debouncedSearchTerm = useDebounce(searchItemName, 500); // 500ms delay
+// const [filteredTransfers, setFilteredTransfers] = useState([]);
 const [selectedItem, setSelectedItem] = useState(null);
     // Refs
-    const videoRef = useRef(null);
-    const codeReaderRef = useRef(null);
+    // const videoRef = useRef(null);
+    // const codeReaderRef = useRef(null);
 
 /**
  * Calculates a daily stock report for a specific warehouse.
@@ -97,7 +94,7 @@ function generateFlatReport({ sales = [], saleReturns = [], stockTransfers = [] 
   // Process Sales
   sales.forEach(sale => {
     if (!sale.warehouse?._id) return;
-    console.log("Processing Sale:", sale);
+    
     const day = sale.createdAt?.substring(0, 10);
     const warehouseId = sale.warehouse._id;
 
@@ -189,9 +186,7 @@ const fetchInitialData = async () => {
                 // setAllItems(itemRes.data.data);
                 const warehouses = warehousesRes.data.data.map(w => ({ label: w.warehouseName, value: w._id ,restricted:w.isRestricted}));
                 const categories = categoriesRes.data.data.map(c => ({ label: c.name, value: c._id }));
-                console.log("Sales",salesRes)
-                console.log("Stock",stockRes)
-                console.log("Returns",salesReturnRes)
+               
                 setOptions({
                     warehouses: [{ label: "All", value: "all" }, ...warehouses],
                     categories: [{ label: "All", value: "all" }, ...categories],
@@ -208,6 +203,8 @@ const fetchInitialData = async () => {
                 setLoading(false);
             }
         };
+
+        
     // Initial data fetching
     useEffect(() => {
         fetchInitialData();
@@ -246,20 +243,33 @@ const fetchInitialData = async () => {
       (item.stockTransferIn || 0) +
       (item.stockTransferOut || 0) > 0);
 
-             console.log("Flat Report:", flatReport);
+             
              
             setReport(flatReport);
-            setFinalReport(flatReport);
+            const catItem={};
+            
+            flatReport.forEach(item => {
+              if (!catItem[item.categoryName]) {
+                catItem[item.categoryName] = [];
+              }
+              catItem[item.categoryName].push(item);
+            });
+            
+             console.log("Categorized Items:", catItem);
+             
+            setFinalReport(catItem);
+            
            if(selectedWarehouse !=="all" || category !== "all" || (dateFrom && dateTo)) {
                applyfilter();
            }
+           
     },[options, sales, returns,stock]);
 
             
 
    const applyfilter = () => {
   const filterreport = report.filter((transfer) => {
-    console.log("Filtering Transfer:", transfer);
+    // console.log("Filtering Transfer:", transfer);
     const warehouseMatch = selectedWarehouse === "all" || transfer.warehouseId === selectedWarehouse;
     const categoryMatch = category === "all" || transfer.categoryId === category;
 
@@ -273,9 +283,14 @@ const fetchInitialData = async () => {
 
     return warehouseMatch && categoryMatch && dateInRange;
   });
-
- 
-  setFinalReport(filterreport);
+const catItem={};
+  filterreport.forEach(item => {
+              if (!catItem[item.categoryName]) {
+                catItem[item.categoryName] = [];
+              }
+              catItem[item.categoryName].push(item);
+            });
+  setFinalReport(catItem);
 };
 
               // Export to PDF function
@@ -443,69 +458,112 @@ const downloadAsPDF = () => {
                 {`Warehouse: ${selectedWarehouseName}, Date: ${!dateFrom ? new Date().toLocaleDateString() : dateFrom} ${dateTo ? `to ${dateTo}` : ''}`}
             </p>
         </div>
-        <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-                <thead className="bg-gray-50">
-                    <tr>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">#</th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Item Name</th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">Pending Qty</th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">MRP</th>
-                        {/* <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Van Stock</th> */}
-                        {/* <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Store Stock</th> */}
-                        
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                    {!loading && finalReport.length > 0 &&
-  finalReport.map((item, index) => {
-    const pendingQty =
-      (item.sale || 0) -
-      (item.saleReturn || 0) -
-      (item.stockTransferIn || 0) +
-      (item.stockTransferOut || 0);
-  
-    if (pendingQty <= 0) return null; // ⛔️ skip rows with no pending qty
-    return (
-      <tr
-        key={`${item.saleId}-${index}`}
-        className="hover:bg-gray-50"
-       
-      >
-        <td className="px-4 py-3 text-sm font-medium text-gray-700" onClick={() => {
-          setPreviewItem(item);
-        }}><img src={`${link}/uploads/qr/items/${item.itemImages[0]}`} alt={index+1} /></td>
-        <td className={`px-4 py-3 text-sm font-medium ${selectedItem?.itemName===item.itemName ? 'text-blue-400' : 'text-gray-400'} break-words`}  onClick={() => {
-          setView(true);
-          setSelectedItem(item);
-        }}>
-          {item.itemName}
-        </td>
-        <td className="px-4 py-3 text-sm font-medium text-center text-gray-800"  onClick={() => {
-          setView(true);
-          setSelectedItem(item);
-        }}>
-          {pendingQty}
-        </td>
-        <td className="px-4 py-3 text-lg font-bold text-blue-600"  onClick={() => {
-          setView(true);
-          setSelectedItem(item);
-        }}>
-          ₹{item.mrp || 0}
-        </td>
+       <div className="overflow-x-auto">
+  <table className="min-w-full bg-white">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">#</th>
+        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Item Name</th>
+        <th className="px-4 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">Pending Qty</th>
+        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">MRP</th>
       </tr>
-    );
-  })}
+    </thead>
 
-                    {loading && (
-                        <tr><td colSpan="4" className="p-4 text-center text-gray-500">Loading...</td></tr>
+    <tbody className="divide-y divide-gray-200">
+      {!loading &&
+        Object.entries(finalReport).map(([categoryName, items]) => (
+          <React.Fragment key={categoryName}>
+            {/* Category Header Row */}
+            <tr className="bg-gray-100">
+              <td colSpan="4" className="px-4 py-2 font-semibold text-gray-700">
+                {categoryName}
+              </td>
+            </tr>
+
+            {/* Items inside category */}
+            {items.map((item, index) => {
+              const pendingQty =
+                (item.sale || 0) -
+                (item.saleReturn || 0) -
+                (item.stockTransferIn || 0) +
+                (item.stockTransferOut || 0);
+
+              if (pendingQty <= 0) return null;
+
+              return (
+                <tr
+                  key={`${item.itemId}-${index}`}
+                  className="hover:bg-gray-50"
+                >
+                  <td
+                    className="px-4 py-3 text-sm font-medium text-gray-700"
+                    onClick={() => setPreviewItem(item)}
+                  >
+                    {index + 1}
+                    {item.itemImages?.length > 0 && (
+                      <img
+                        src={`${link}/uploads/qr/items/${item.itemImages[0]}`}
+                        alt={item.itemName}
+                        className="object-cover w-10 h-10"
+                      />
                     )}
-                    {!loading && finalReport.length === 0 && (
-                        <tr><td colSpan="4" className="p-4 text-center text-gray-500">No records found</td></tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-sm font-medium ${
+                      selectedItem?.itemName === item.itemName && selectedItem.warehouseId === item.warehouseId
+                        ? "text-blue-400"
+                        : "text-gray-400"
+                    } break-words`}
+                    onClick={() => {
+                      setView(true);
+                      setSelectedItem(item);
+                    }}
+                  >
+                    {item.itemName}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-sm font-medium text-center text-gray-800"
+                    onClick={() => {
+                      setView(true);
+                      setSelectedItem(item);
+                    }}
+                  >
+                    {pendingQty}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-lg font-bold text-blue-600"
+                    onClick={() => {
+                      setView(true);
+                      setSelectedItem(item);
+                    }}
+                  >
+                    ₹{item.mrp || 0}
+                  </td>
+                </tr>
+              );
+            })}
+          </React.Fragment>
+        ))}
+
+      {loading && (
+        <tr>
+          <td colSpan="4" className="p-4 text-center text-gray-500">
+            Loading...
+          </td>
+        </tr>
+      )}
+
+      {!loading && Object.keys(finalReport).length === 0 && (
+        <tr>
+          <td colSpan="4" className="p-4 text-center text-gray-500">
+            No records found
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+
     </div>
 
     {/* --- Table 2: Detailed Report --- */}

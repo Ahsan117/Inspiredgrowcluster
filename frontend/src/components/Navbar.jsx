@@ -74,10 +74,14 @@ const handleLogout = async () => {
   
   localStorage.clear();
 
-  await Preferences.remove({ key: 'token' });
-  await Preferences.remove({ key: 'role' });
-  await Preferences.remove({ key: 'permissions' });
-
+    await Preferences.remove({ key: "token" });
+  await Preferences.remove({ key: "role" });
+  await Preferences.remove({ key: "permissions" });
+  await Preferences.remove({ key: "userId" });
+  await Preferences.remove({ key: "roleId" });
+  await Preferences.remove({ key: "stores" });
+  await Preferences.remove({ key: "storeId" });
+  await Preferences.remove({ key: "deafultWarehouse" });
   navigate("/");
 
   window.location.reload();

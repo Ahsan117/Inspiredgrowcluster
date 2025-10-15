@@ -13,10 +13,10 @@ import AuditorNavbar from './AuditorNavBar.jsx'
 
 
 const  Audit=()=> {
-      const link="https://pos.inspiredgrow.in/vps"
-      // const link="http://localhost:5000"
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
-     useEffect(()=>{
+   
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  
+  useEffect(()=>{
         if(window.innerWidth < 768){
           setSidebarOpen(false)
         }
@@ -29,7 +29,8 @@ const  Audit=()=> {
      const [formData,setFormData] = useState({
         storeId:null,
         warehouseId:null,
-        users:[]
+        users:[],
+        partial:false
      })
 
      const [userData, setUserData] = useState({
@@ -40,7 +41,7 @@ const  Audit=()=> {
 
      const fetchStores = async () => {
         try {
-            const response = await axios.get(`${link}/admin/store/add/store`,{
+            const response = await axios.get('https://pos.inspiredgrow.in/vps/admin/store/add/store',{
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -60,7 +61,7 @@ const  Audit=()=> {
 
      const fetchWarehouses = async () => {
         try {
-            const response = await axios.get(`${link}/api/warehouses?scope=mine`,{
+            const response = await axios.get('https://pos.inspiredgrow.in/vps/api/warehouses?scope=mine',{
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -80,15 +81,20 @@ const  Audit=()=> {
      useEffect(() => {
          if(!formData.storeId) return;
 
+             alert("Store ID changed, fetching warehouses...");
+
+             console.log(allstore, formData.storeId);
+
              const storeExists=allstore.find(store => store._id === formData.storeId);
 
 
              
              if(!storeExists){
                  alert("Store not found, please select a valid store.");
-                 return;}
-
-         const filteredWarehouses = allwarehouse.filter(warehouse => warehouse.store == formData.storeId);
+                 return;} 
+                 
+         const filteredWarehouses = allwarehouse.filter(warehouse => warehouse.store === formData.storeId);
+         
           if(filteredWarehouses.length === 0){
               alert("No warehouses found for the selected store.");
               return;
@@ -127,13 +133,13 @@ const handleSubmit = async (e) => {
   e.preventDefault();
    try {
     console.log("Submitting audit with data:", formData);
-    const response = await axios.post(  `${link}/api/audit/create`, formData, {
+    const response = await axios.post('https://pos.inspiredgrow.in/vps/api/audit/create', formData, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`
       }
     });
     console.log("Audit submitted successfully:", response.data);
-    alert("Audit Started successfully");
+    alert("Audit submitted successfully");
     setFormData({
       storeId: null,
       warehouseId: null,
@@ -147,11 +153,13 @@ const handleSubmit = async (e) => {
    } catch (error) {
     console.log("Error submitting audit:", error);
    }
+
+
+
 }
+const [checked,setChecked] = useState(true);
 
-
-
-
+  
   return (
     <div className="flex flex-col h-screen">
       <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -204,6 +212,9 @@ const handleSubmit = async (e) => {
                     <Select className="w-full" options={warehouseView} onChange={(option)=>setFormData((prev)=>({...prev,warehouseId:option.value}))}  value={warehouseView.find((s) => s.value === formData.warehouseId) || null}/>
                   </div>
                  </div>
+
+
+              
   
                    {/* //user add */}
                     <div className="flex flex-col mt-4 md:gap-5 md:flex-row">
@@ -227,7 +238,17 @@ const handleSubmit = async (e) => {
 
                   
                  </div>
-
+                   <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={formData.partial}
+        onChange={(e) => setFormData((prev) => ({ ...prev, partial: e.target.checked }))}
+        className="w-5 h-5 rounded accent-green-500"
+      />
+      <span className="text-sm font-medium">
+        {formData.partial ? "Partial" : "Not Partial"}
+      </span>
+    </label>
                       <div className='flex flex-col items-center justify-around w-full gap-2 mx-auto mt-4 sm:flex-row'>
                                                       <Button className="w-full text-white bg-green-500 rounded cursor-pointer hover:bg-green-600" type='submit' text="Add" onClick={handleAdd} /> {/* Save button */}
                                                       <Button className="w-full text-white bg-orange-500 rounded cursor-pointer hover:bg-orange-600" text="Reset"  onClick={()=>setUserData({

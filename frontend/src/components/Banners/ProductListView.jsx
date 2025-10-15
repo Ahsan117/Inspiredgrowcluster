@@ -1,289 +1,253 @@
-
-import React, { useState, useEffect } from 'react';
-import { FaTachometerAlt ,FaEye} from "react-icons/fa";
-import { BiChevronRight } from "react-icons/bi";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Navbar from "../Navbar.jsx";
 import Sidebar from "../Sidebar.jsx";
-import axios from 'axios';
-import LoadingScreen from '../../Loading.jsx';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { FaEdit, FaTrash } from "react-icons/fa";
-import Select from 'react-select'
-import ImagePreview from './ProductListItem.jsx';
-const ProductListView = () => {
-  const link="https://pos.inspiredgrow.in/vps"
+import axios from "axios";
+import PurchaseOverview from "./ProductEdit.jsx";
+export default function ProductListView() {
+  const [isOverviewOpen, setOverviewOpen] = useState(false);
+  const [sa,setSa]=useState({});
+  const link = "https://pos.inspiredgrow.in/vps";
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const[view,setView]=useState(false)
-  const[data,setData]=useState([])
-  const[Type,setType]=useState("")
-  const[currentProduct,setCurrentProduct]=useState([])
- 
-    
-  const [dropdownIndex, setDropdownIndex] = useState(null);
- useEffect(()=>{
-    if(window.innerWidth < 768){
-      setSidebarOpen(false)
-    }
-  },[window.innerWidth])
 
-  
-  const toggleDropdown = (id) => {
-    setDropdownIndex(dropdownIndex === id ? null : id);
-  };
+  const [page, setPage] = useState(1); // pagination
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${link}/api/product/all`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+  const observer = useRef();
+
+  // ✅ Infinite scroll handler
+  const lastItemRef = useCallback(
+    (node) => {
+      if (loading) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prev) => prev + 1);
+        }
       });
-     console.log(response.data)
-    setData(response.data)
-    } catch (err) {
-      console.error("Error fetching advance payments:", err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (node) observer.current.observe(node);
+    },
+    [loading, hasMore]
+  );
 
+  // ✅ Fetch Folders
   useEffect(() => {
-    fetchData();
-  }, []);
+    async function fetchFolders() {
+      try {
+        setLoading(true);
+        const token = `bearer ${localStorage.getItem("token")}`;
+        const res = await axios.get(
+          `${link}/api/product/all?page=${page}&limit=20`,
+          { headers: { Authorization: token } }
+        );
 
- 
+      setFolders(res.data);
+      console.log("📁 Folders fetched:", res.data);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Do you want to delete this ?")) return;
-    setLoading(true);
+       
+      } catch (error) {
+        console.error("❌ Error fetching folders:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFolders();
+  }, [page]);
+  
+  const fetch=async()=>{
+     try {
+        setLoading(true);
+        const token = `bearer ${localStorage.getItem("token")}`;
+        const res = await axios.get(
+          `${link}/api/product/all?page=${page}&limit=20`,
+          { headers: { Authorization: token } }
+        );
+
+      setFolders(res.data);
+      console.log("📁 Folders fetched:", res.data);
+
+       
+      } catch (error) {
+        console.error("❌ Error fetching folders:", error);
+      } finally {
+        setLoading(false);
+      }
+  }
+  // ✅ Delete Media
+  const handleDelete = async (folderId, mediaId) => {
     try {
-      await axios.delete(`${link}/api/product/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+      const token = `bearer ${localStorage.getItem("token")}`;
+      await axios.delete(`${link}/api/product/${folderId}/media/${mediaId}`, {
+        headers: { Authorization: token },
       });
-      alert("Deleted Successfully");
-    } catch (error) {
-      console.error("Error deleting advance payment:", error.message);
-    } finally {
-      fetchData();
-      setLoading(false);
+
+      // Update UI
+      setFolders((prev) =>
+        prev.map((f) =>
+          f._id === folderId
+            ? { ...f, media: f.media.filter((m) => m._id !== mediaId) }
+            : f
+        )
+      );
+    } catch (err) {
+      console.error("❌ Delete failed:", err);
     }
   };
 
- 
-
-  const indexOfLastItem = currentPage * entriesPerPage;
-  const indexOfFirstItem = indexOfLastItem - entriesPerPage;
-  const totalPages = Math.ceil(10 / entriesPerPage);
-  const currentUsers = data?.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages)
-      setCurrentPage(newPage);
+  // ✅ Edit Placeholder
+  const handleEdit = (folderId, media) => {
+    alert(`📝 Editing ${media.url} from folder ${folderId}`);
+    // TODO: open modal with brand/category/items to edit
   };
-
-  const handleEntriesChange = (e) => {
-    setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1);
+    const[f,setf]=useState({});
+  useEffect(() => {
+    
+const authHeader = {
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
   };
+    const fetchAll = async () => {
+      try {
+        const [brandRes, categoryRes, subCatRes, subSubCatRes, itemRes] = await Promise.all([
+          axios.get("https://pos.inspiredgrow.in/vps/api/brands", authHeader),
+          axios.get("https://pos.inspiredgrow.in/vps/api/categories", authHeader),
+          axios.get("https://pos.inspiredgrow.in/vps/api/subcategories", authHeader),
+          axios.get("https://pos.inspiredgrow.in/vps/api/sub-subcategories", authHeader),
+          axios.get("https://pos.inspiredgrow.in/vps/api/items", authHeader)
+        ]);
+        
+        const Brands=(brandRes.data.data.map(b => ({ value: b._id, label: b.brandName })));
+        const Categories=(categoryRes.data.data.map(c => ({ value: c._id, label: c.name })));
+        const SubCategories=(subCatRes.data.data.map(s => ({ value: s._id, label: s.name })));
+        const SubSubCategories=(subSubCatRes.data.data.map(ss => ({ value: ss._id, label: ss.name })));
+        const setItems=(itemRes.data.data);
+        setf({Brands,Categories,SubCategories,SubSubCategories,setItems});
+        console.log("Fetched Data:", f);
+      } catch (err) {
+        console.error(err);
+      }
+    };
 
-  // Export functions (Copy, Excel, PDF, Print, CSV) remain unchanged...
-
-  if (loading) return <LoadingScreen />;
+    fetchAll();
+  }, [folders]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col bg-gray-50">
+      {/* Navbar */}
       <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="box-border flex">
-        <div className="w-auto">
+
+      <div className="flex flex-grow">
+        {/* Sidebar */}
+        <div>
           
         <Sidebar isSidebarOpen={isSidebarOpen} />
         </div>
-        <div className={`overflow-x-auto  flex flex-col p-2 md:p-2 min-h-screen w-full`}>
-          <header className="flex flex-col items-start justify-between p-0 mb-6 md:flex-row md:items-center">
-            <h2 className="text-lg font-bold md:text-xl">Product List</h2>
-            <nav className="flex flex-wrap gap-2 mt-2 text-sm text-gray-600 md:mt-0">
-             <NavLink to="/dashboard" className="flex items-center text-gray-700 no-underline hover:text-cyan-600">
-                            <FaTachometerAlt className="mr-2 text-gray-500 hover:text-cyan-600" /> Home
-                          </NavLink>     
-                          <NavLink to="/product/add" className="flex items-center text-gray-700 no-underline hover:text-cyan-600">
-                           &gt; Product List
-                          </NavLink>    
-            </nav>
-          </header>
-          {view && <ImagePreview setView={setView} previewUrls={currentProduct} />}
-          {/* Filters Section */}
-          <div className="p-4 mb-4 bg-white border-t-4 rounded shadow border-cyan-500">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Marketing Item List</h3>
-              <button className="px-4 py-1 mt-2 text-white rounded bg-cyan-400 hover:bg-cyan-600 md:mt-0" onClick={() => navigate('/product/add')}>
-                + Create Product 
-              </button>
-            </div>
 
-            
-            <div className="flex flex-col justify-between mt-4 mb-4 space-y-2 md:flex-row md:space-y-0 md:items-center">
-               
+        {/* Main Content */}
+        <div className="flex flex-col flex-grow p-6 overflow-y-auto">
+          <h1 className="flex items-center gap-2 mb-6 text-2xl font-bold text-gray-800">
+            📂 Media Library
+          </h1>
 
-                <div className='flex flex-col items-baseline gap-2 md:flex-row'>
-                <div className="flex items-center space-x-2">
-                <span className="text-sm">Show</span>
-                <select className="p-2 text-sm border border-gray-300 rounded-md" value={entriesPerPage} onChange={handleEntriesChange}>
-                  <option>10</option>
-                  <option>20</option>
-                  <option>50</option>
-                </select>
-                <span className="text-sm">Entries</span>
-              </div>
-              
-              <div className="flex flex-col gap-2 md:flex-row">
-                <div className='flex items-center justify-between flex-1 gap-2'>
-                <button 
-                // onClick={handleCopy}
-                 className="px-3 py-2 text-sm text-white bg-cyan-500">Copy</button>
-                <button 
-                // onClick={handleExcelDownload}
-                 className="px-3 py-2 text-sm text-white bg-cyan-500">Excel</button>
-                <button
-                //  onClick={handlePdfDownload}
-                  className="px-3 py-2 text-sm text-white bg-cyan-500">PDF</button>
-                <button 
-                // onClick={handlePrint}
-                 className="px-3 py-2 text-sm text-white bg-cyan-500">Print</button>
-                <button 
-                // onClick={handleCsvDownload}
-                 className="px-3 py-2 text-sm text-white bg-cyan-500">CSV</button>
-                </div>
-                <input type="text" placeholder="Search" className="w-full p-2 text-sm border border-gray-300 " onChange={(e) => setSearchTerm(e.target.value)} />
-              </div>
-                </div>
-             
+          {folders.length === 0 && !loading && (
+            <p className="text-gray-600">No folders found.</p>
+          )}
 
-              
-            </div>
-            
+          {folders.filter((folder) => folder.media.length > 0).map((folder, fIdx) => (
+            <div key={folder._id} className="mb-12">
+              <h2 className="mb-4 text-lg font-semibold text-gray-700">
+                📁 {folder.folderName}
+              </h2>
+{
+                isOverviewOpen && <PurchaseOverview f={f} isOpen={isOverviewOpen} setIsOpen={setOverviewOpen} onClose={()=>{setOverviewOpen(false);fetch()}} sa={sa} />
+}
+              {/* Media Grid */}
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                {folder.media.map((m, idx) => {
+                  
+                  return (
+                    <div
+                      key={m._id}
+                  
+                      className="flex flex-col p-3 transition-all bg-white shadow rounded-2xl hover:shadow-lg"
+                    >
+                      {/* Image/Video */}
+                      <div className="relative w-full h-40">
+                        {m.url?.endsWith(".mp4") ? (
+                          <video
+                            src={`${link}${m.url}`}
+                            controls
+                            className="object-cover w-full h-full rounded-lg"
+                          />
+                        ) : (
+                          <img
+                            src={`${link}${m.url}`}
+                            alt="media"
+                            loading="lazy"
+                            className="object-cover w-full h-full rounded-lg"
+                          />
+                        )}
+                      </div>
 
-            {/* Advance Payments Table */}
-            <div className="w-full overflow-x-auto">
-              <table className="w-full bg-white border-collapse rounded-md shadow-lg">
-                <thead className="text-sm bg-gray-100">
-                  <tr>
-                    <th className="px-4 py-2 border">ID</th>
-                    <th className="px-4 py-2 border">Product Id</th>
-                    <th className="px-4 py-2 border">Date</th>
-                    <th className="px-4 py-2 border">Image</th>
-                    <th className="px-4 py-2 border">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="py-4 text-sm text-center text-gray-500">No data available in table</td>
-                    </tr>
-                  ) : (
-                    currentUsers.map((transfer) => (
-                      <tr key={transfer._id} className="border-t">
-                        <td className="px-4 py-2 border">{transfer._id}</td>
-                        <td className="px-4 py-2 border">{transfer.productId}</td>
-                        <td className="px-4 py-2 border">{new Date(transfer.createdAt).toDateString()}</td>
-                        <td className="px-4 py-2 border">
-                        <div className='flex-col w-full mt-4'>
-              <button
-                onClick={() => {setView(true);setCurrentProduct(transfer.media)}}
-                className="z-50 px-3 py-1 mt-2 ml-2 text-white transition bg-blue-500 rounded-md hover:bg-blue-600"
-              >
-            View 
-              </button>
-            </div>
-                        </td>
-                      
-                        
-                       
-                      <td className="relative px-4 py-2 border">
-  <button
-    className="flex items-center gap-1 px-4 py-1.5 text-sm font-medium text-white bg-cyan-600 rounded hover:bg-cyan-700 transition-colors"
-    onClick={() => toggleDropdown(transfer._id)}
-  >
-    Action <span className="text-xs">▼</span>
-  </button>
+                      {/* Meta Info */}
+                      <div className="mt-3 text-sm text-gray-700">
+                        <p>
+                          <span className="font-semibold">Brand:</span>{" "}
+                          {m.brand?.brandName || "N/A"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Category:</span>{" "}
+                          {m.category?.name || "N/A"}
+                        </p>
+                         <p>
+                          <span className="font-semibold">Subcategory:</span>{" "}
+                          {m.subCategory?.name || "N/A"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Sub-Subcategory:</span>{" "}
+                          {m.subSubCategory?.name || "N/A"}
+                        </p>
+                        {m.items?.length > 0 ? (
+                          <ul className="pl-4 mt-1 overflow-y-auto text-xs text-gray-600 list-disc max-h-16">
+                            {m.items.map((it, i) => (
+                              <li key={i}>{it.itemName}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-gray-400">No items</p>
+                        )}
+                      </div>
 
-  {dropdownIndex === transfer._id && (
-    <div className="absolute right-0 z-20 mt-2 bg-white border border-gray-200 shadow-lg w-44 rounded-xl animate-fadeIn">
-      
-     
-      <button
-        className="flex items-center w-full gap-2 px-4 py-2 text-sm text-blue-600 transition-colors rounded-t-xl hover:bg-blue-50"
-        onClick={() => {
-          navigate(`/marketingitem/add?id=${transfer._id}`)
-        }}
-      >
-        <FaEye />
-        Edit
-      </button>
-
-      <button
-        className="flex items-center w-full gap-2 px-4 py-2 text-sm text-red-600 transition-colors rounded-b-xl hover:bg-red-50"
-        onClick={() => handleDelete(transfer._id)}
-      >
-        <FaTrash />
-        Delete
-      </button>
-    </div>
-  )}
-</td>
-
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex flex-col items-start justify-between gap-2 p-2 md:justify-between md:flex-row">
-              <span>                    <span>Showing {entriesPerPage * (currentPage - 1) + 1} to {Math.min(entriesPerPage * currentPage, data.length)} of {data.length} entries</span>              </span>
-              <div className='flex justify-between w-full md:w-auto md:gap-2'>
-              <button
-  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-md 
-    ${currentPage === 1 
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"}`}
-  onClick={() => handlePageChange(currentPage - 1)}
-  disabled={currentPage === 1}
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-  </svg>
-  Previous
-</button>
-
-<button
-  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-md 
-    ${currentPage === totalPages 
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"}`}
-  onClick={() => handlePageChange(currentPage + 1)}
-  disabled={currentPage === totalPages}
->
-  Next
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-  </svg>
-</button>
-
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => {setSa(m); setOverviewOpen(true);}}
+                          className="flex-1 px-3 py-1 text-xs font-medium text-white transition bg-yellow-500 rounded hover:bg-yellow-600"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(folder._id, m._id)}
+                          className="flex-1 px-3 py-1 text-xs font-medium text-white transition bg-red-600 rounded hover:bg-red-700"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </div> 
+          ))}
+
+          {/* Loader */}
+          {loading && <p className="mt-4 text-center">Loading...</p>}
+        </div>
       </div>
     </div>
   );
-};
+}
 
 
-export default ProductListView;
+
+

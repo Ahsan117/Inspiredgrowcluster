@@ -113,6 +113,7 @@ const PurchaseM= () => {
   const [defaultWarehouse, setDefaultWarehouse] = useState(null);
   const[sWarehouse,setSWarehouse]=useState(null)
   const {posData}=useContext(POSContext);
+  const[itemScan,setItemScan]=useState(false)
   const [options, setOptions] = useState({
     warehouse: [],
     items: [],
@@ -253,6 +254,10 @@ useEffect(() => {
 
 
     async function fetchItems(sWarehouse) {
+
+      if(itemScan){
+        return;
+      }
     if (!sWarehouse) {
       setAllItems([]);
       return;
@@ -263,7 +268,7 @@ useEffect(() => {
        const {data} = await 
       axios.get(`${link}/api/items`, {
           headers: { Authorization: `Bearer ${token}` },
-        params: { warehouse: sWarehouse,inStock:"false"},
+        params: { warehouse: sWarehouse},
         })
         
      
@@ -286,20 +291,23 @@ useEffect(() => {
          console.log("fetchItems called with warehouse:", sWarehouse);
 
          console.log("flatItems", flatItems);
+         console.log(itemScan)
           setAllItems(flatItems);
         
       } catch (err) {
         console.error("Fetch items error:", err.message);
       }
     }
+useEffect(() => {
+  if (!sWarehouse) return;
 
-      useEffect(() => {
-   
-     if (!sWarehouse) return;
+  // only set interval if scanner is not active
+  if (!itemScan) {
     const interval = setInterval(() => fetchItems(sWarehouse), 1000);
+    return () => clearInterval(interval);
+  }
+}, [sWarehouse, itemScan]);  // 👈 added itemScan here
 
-    return () => clearInterval(interval); // cleanup jab component unmount ho
-  }, [sWarehouse]);
 
   
   useEffect(() => {
@@ -382,10 +390,11 @@ useEffect(() => {
     return;
   }
   try {
-    // const response = await axios.get(`${link}/api/warehouses?scope=mine`, {
-    //   headers: { Authorization: `Bearer ${token}` },
-    // });
-    const allWh = posData.warehouses || [];
+     const response = await axios.get(`${link}/api/warehouses?scope=mine`, {
+       headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const allWh = response.data?.data || [];
     const activeWh = allWh
       .filter(w => w.status === "Active")
       .map(w => ({
@@ -394,13 +403,13 @@ useEffect(() => {
         cashAccount: w.cashAccount?._id || w.cashAccount,
       }));
     setOptions(prev => ({ ...prev, warehouse: activeWh }));
-    //if (!id && activeWh.length) {
-     // const restrictedWarehouse = allWh.find((w) => w.isRestricted && w.status === "Active");
-      //setFormData(prev => ({
-        //...prev,
-        //warehouse: restrictedWarehouse?._id || activeWh[0]?.value || null
-      //}));
-    //}
+    if (!id && activeWh.length) {
+     const restrictedWarehouse = allWh.find((w) => w.isRestricted && w.status === "Active");
+      setFormData(prev => ({
+        ...prev,
+        warehouse: restrictedWarehouse?._id || activeWh[0]?.value || null
+      }));
+    }
   } catch (error) {
     alert(error.response?.data?.message || error.message);
   } finally {
@@ -836,7 +845,7 @@ const addItem = (it) => {
 
     setFormData((prev) => ({
       ...prev,
-      items: [...(prev.items || []), newItem],
+      items: [ newItem,...(prev.items || [])],
     }));
 
     // Also push to options.items for reference (optional)
@@ -924,7 +933,7 @@ const addItemsInBatch = (matchedItems) => {
           totalAmount,
         };
 
-        updatedItems.push(newItem);
+        updatedItems.unshift(newItem);
         playSound("/sounds/item-added.mp3");
       }
     });
@@ -1009,7 +1018,7 @@ const addItemsInBatch = (matchedItems) => {
             activeTab==="p1" && <Purchase1 options={options} sWarehouse={sWarehouse} setSWarehouse={setSWarehouse} setActiveTab={setActiveTab} handleSelectChange={handleSelectChange} formData={formData} setFormData={setFormData} setShowSupplierPop={setShowSupplierPop} />
           }
            {
-            activeTab==="p2" && <Purchase2 addItemsInBatch={addItemsInBatch} updateItem={updateItem} items={formData.items} removeItem={handleRemoveItem}  selectedWarehouse={formData.warehouse} setActiveTab={setActiveTab} formData={formData} setFormData={setFormData} result={result} setResult={setResult} allItems={allItems} addItem={addItem} handleAddItem={handleAddItem}filteredItems={filteredItems}  options={options} handleItemFieldChange={handleItemFieldChange} handleRemoveItem={handleRemoveItem}
+            activeTab==="p2" && <Purchase2 itemScan={itemScan} setItemScan={setItemScan} addItemsInBatch={addItemsInBatch} updateItem={updateItem} items={formData.items} removeItem={handleRemoveItem}  selectedWarehouse={formData.warehouse} setActiveTab={setActiveTab} formData={formData} setFormData={setFormData} result={result} setResult={setResult} allItems={allItems} addItem={addItem} handleAddItem={handleAddItem}filteredItems={filteredItems}  options={options} handleItemFieldChange={handleItemFieldChange} handleRemoveItem={handleRemoveItem}
             />
           }
             {

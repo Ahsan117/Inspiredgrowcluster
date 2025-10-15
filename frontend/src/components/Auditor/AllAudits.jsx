@@ -1,23 +1,22 @@
 import React from 'react'
-import Select from 'react-select'
 import { useState,useEffect } from 'react'
-import axios, { all } from 'axios'
+import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import Navbar from "../Navbar.jsx";
 import Sidebar from '../Sidebar.jsx'
-import Button from '../contact/Button.jsx'
+
 import { NavLink } from 'react-router-dom'
 import { FaTachometerAlt } from 'react-icons/fa'
-import { FiEdit, FiTrash2 } from 'react-icons/fi'
+
 import ViewItems from './ViewItems.jsx'
-import { IdcardFilled } from '@ant-design/icons'
 
 const  AllAudits=()=> {
       const link="https://pos.inspiredgrow.in/vps"
-    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [comparison,setComparison]=useState(false)
     const[items,setItems]=useState([])
     const [audits,setAudits]=useState([])
+  
      useEffect(()=>{
         if(window.innerWidth < 768){
           setSidebarOpen(false)
@@ -90,139 +89,6 @@ const  AllAudits=()=> {
      
      
   return (
-//     <div className="flex flex-col h-screen">
-//       <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
-//       <div className="flex w-full">
- 
-//           <div>
-//         <Sidebar isSidebarOpen={isSidebarOpen} />
-//           </div>
-          
-//            {/* Content */}
-//          <div className={`w-full flex flex-col p-2 md:p-2  `}>
-//           <header className="flex flex-col items-center justify-between p-4 rounded-md shadow sm:flex-row">
-//             <div className="flex items-center gap-1 text-center sm:flex-row sm:text-left">
-//               <h1 className="text-lg font-semibold truncate sm:text-xl">Audit List</h1>
-//               {/* <span className="text-xs text-gray-600 sm:text-sm">Add/Update Banner</span> */}
-//             </div>
-
-//             <nav className="flex flex-wrap items-center justify-center mt-2 text-xs text-gray-500 sm:justify-start sm:text-sm sm:mt-0">
-//    <NavLink to="/dashboard" className="flex items-center text-gray-700 no-underline hover:text-cyan-600">
-//                             <FaTachometerAlt className="mr-2 text-gray-500 hover:text-cyan-600" /> Home
-//                           </NavLink>     
-//                           <NavLink to="/banners/view" className="flex items-center text-gray-700 no-underline hover:text-cyan-600">
-//                            &gt; Start Audit
-//                           </NavLink>    
-//                           <NavLink to="/banners/add" className="text-gray-700 no-underline hover:text-cyan-600">
-//                            &gt; Audit List
-//                           </NavLink>
-              
-//             </nav>
-//           </header>
-//            {
-//             comparison && <ViewItems  audit={items} onClose={()=>{setComparison(false)}} sidebarOpen={isSidebarOpen}/>
-//             // <AuditComparison auditItems={items} onClose={()=>setComparison(false)}/>
-//           } 
-
-//           <div className="p-4 mt-1 bg-white border-t-4 rounded-lg shadow-md border-cyan-500">
-            
-        
-//               <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-//   {/* Desktop Table */}
-//   <table className="min-w-full divide-y divide-gray-200 ">
-//     <thead className="bg-gray-50">
-//       <tr>
-//         <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-//           Audit ID
-//         </th>
-//         <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-//           Total Items
-//         </th>
-//         <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-//           Actions
-//         </th>
-//       </tr>
-//     </thead>
-//     <tbody className="hidden bg-white divide-y divide-gray-200 md:table">
-//       {audits.map((audit) => (
-//         <tr key={audit._id}>
-//           <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-//             {audit._id}
-//           </td>
-//           <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-//             {audit.finalUnit?.length || 0} items
-//           </td>
-//           <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
-//             <button
-//               className="mr-4 text-indigo-600 hover:text-indigo-900"
-//               onClick={() => {
-//                 setItems(audit);
-//                 setComparison(true);
-//               }}
-//             >
-//               View Comparison
-//             </button>
-//             <button
-//               className="text-red-600 hover:text-red-900"
-//               onClick={() => handleDelete(audit._id)}
-//             >
-//               Delete
-//             </button>
-//           </td>
-//         </tr>
-//       ))}
-//     </tbody>
-//   </table>
-
-//   {/* Mobile Cards */}
-//   <div className="p-4 space-y-4 md:hidden">
-//     {audits.map((audit) => (
-//       <div
-//         key={audit._id}
-//         className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
-//       >
-//         <div className="mb-2 text-sm font-medium text-gray-700">Audit ID:</div>
-//         <div className="mb-1 text-base font-semibold text-gray-900 break-all">
-//           {audit._id}
-//         </div>
-
-//         <div className="mb-3 text-sm text-gray-600">
-//           Total Items: {audit.finalUnit?.length || 0}
-//         </div>
-
-//         <div className="flex justify-start space-x-4">
-//           <button
-//             className="text-sm text-indigo-600 hover:text-indigo-900"
-//             onClick={() => {
-//               setItems(audit);
-//               setComparison(true);
-//             }}
-//           >
-//             View
-//           </button>
-//           <button
-//             className="text-sm text-red-600 hover:text-red-900"
-//             onClick={() => handleDelete(audit._id)}
-//           >
-//             Delete
-//           </button>
-//         </div>
-//       </div>
-//     ))}
-//   </div>
-// </div>
- 
- 
-
-                       
-         
-                
-                 
-//             </div>
-            
-//           </div>
-//         </div>
-//       </div>
 <div className="flex flex-col h-screen bg-gray-50">
   <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
 
@@ -248,15 +114,16 @@ const  AllAudits=()=> {
             <FaTachometerAlt className="mr-1" /> Home
           </NavLink>
           <span>{'>'}</span>
-          <NavLink to="/banners/view" className="hover:text-cyan-600">
+          <NavLink to="/audit" className="hover:text-cyan-600">
             Start Audit
           </NavLink>
           <span>{'>'}</span>
-          <NavLink to="/banners/add" className="hover:text-cyan-600">
+          <NavLink to="/audit/all" className="hover:text-cyan-600">
             Audit List
           </NavLink>
         </nav>
       </header>
+      
 
       {/* Audit Table / Cards */}
       <div className="p-4 mt-4 bg-white border-t-4 rounded-lg shadow-md border-cyan-500">
@@ -266,6 +133,7 @@ const  AllAudits=()=> {
             <thead className="text-xs text-gray-700 uppercase bg-gray-100">
               <tr>
                 <th className="px-6 py-3">Audit ID</th>
+                <th className="px-6 py-3">Warehouse</th>
                 <th className="px-6 py-3">Total Items</th>
                 <th className="px-6 py-3 text-center">Actions</th>
               </tr>
@@ -276,7 +144,10 @@ const  AllAudits=()=> {
                   <td className="px-6 py-4 font-medium text-gray-900 break-all">
                     {audit._id}
                   </td>
-                  <td className="px-6 py-4">{audit.finalUnit?.length || 0} items</td>
+                  <td className="px-6 py-4 font-medium text-gray-900 break-all">
+                    {audit.warehouseId?.warehouseName}
+                  </td>
+                  <td className="px-6 py-4">{audit.items?.length || 0} items</td>
                   <td className="px-6 py-4 space-x-3 text-center">
                     <button
                       className="px-3 py-1 text-sm text-indigo-600 border border-indigo-600 rounded hover:bg-indigo-50"
@@ -289,10 +160,15 @@ const  AllAudits=()=> {
                     </button>
                     <button
                       className="px-3 py-1 text-sm text-red-600 border border-red-600 rounded hover:bg-red-50"
-                      onClick={() => handleDelete(audit._id)}
+                       onClick={() => {
+    if (window.confirm("Are you sure you want to delete this audit?")) {
+      handleDelete(audit._id);
+    }
+  }}
                     >
                       Delete
                     </button>
+                     
                   </td>
                 </tr>
               ))}
@@ -311,8 +187,12 @@ const  AllAudits=()=> {
               <div className="mb-2 text-sm font-medium text-gray-900 break-all">
                 {audit._id}
               </div>
+              <div className="text-xs font-semibold text-gray-500">Warehouse</div>
+              <div className="mb-2 text-sm font-medium text-gray-900 break-all">
+                {audit.warehouseId?.warehouseName}
+              </div>
               <div className="mb-3 text-xs text-gray-500">
-                Total Items: {audit.finalUnit?.length || 0}
+                Total Items: {audit.items?.length || 0}
               </div>
 
               <div className="flex gap-3">

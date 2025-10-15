@@ -3,6 +3,23 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 
+const mysql = require("mysql2/promise");
+
+const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "2016Keshav@1",  // 👈 wahi password jo PHP me diya tha
+  database: "db_catlouge",
+   port: 3306
+});
+pool.getConnection()
+  .then((connection) => {
+    console.log("MySQL connected successfully!");
+    connection.release();
+  })
+  .catch((error) => {
+    console.error("Error connecting to MySQL:", error);
+  });
 
 
 
@@ -90,7 +107,7 @@ const listEndpoints = require('./routes/listEndpoints');
 const printRoutes=require("./routes/printRoutes.js")
 const orderPaymentRoutes = require('./routes/orderPaymentRoutes');
 const checkout=require("./routes/checkoutRoutes.js")
-
+const cardRoutes = require("./routes/cardRoutes.js");
  const location = require("./routes/location.js");
 
 
@@ -138,7 +155,7 @@ console.log("🔑 JWT_SECRET:", process.env.JWT_SECRET);
 app.use("/api/way",location);
 app.use("/print",printRoutes)
 app.use("/auth", authRoutes);
-
+app.use("/api/card", cardRoutes);
 app.use("/admin", userRoutes);
 app.use("/admiaddinguser", UsersRoutes);
 app.use("/admincreatingrole", roleRoutes);

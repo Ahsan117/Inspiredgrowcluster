@@ -121,14 +121,14 @@ const StockScanner = ({ allItems, addItem, setItemScan,handleAddItemsBatch }) =>
   } else {
     playSound("/sounds/item-added.mp3");
     return [
-      ...prevItems,
+      
       {
         ...match,
         quantity: 1,
         item: match._id,
         subtotal: match.salesPrice * 1,
         stock: match.currentStock || 0,
-      }
+      }, ...prevItems
     ];
   }
 });

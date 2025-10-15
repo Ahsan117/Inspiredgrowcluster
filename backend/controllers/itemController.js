@@ -40,6 +40,26 @@ function generateItemCode(lastCode) {
   return prefix + String(nextNum).padStart(width, '0');
 }
 
+
+exports.changeOffer=async(req,res)=>{
+      try{
+        const {items}=req.body;
+        Item.aggregation([
+          {
+            $match:{_id:{$in:items.map(id=>mongoose.Types.ObjectId(id))}}
+          },
+          {
+            $set:{offer:true}
+          }
+        ])
+        return res.status(200).json({success:true,message:"offer changed successfully"})
+      }
+      catch(error){
+        console.log("error in changing offer",error)
+        return res.status(500).json({success:false,message:"Failed to change offer"})
+      }
+}
+
 // CREATE Item
 exports.createItem = async (req, res) => {
   try {

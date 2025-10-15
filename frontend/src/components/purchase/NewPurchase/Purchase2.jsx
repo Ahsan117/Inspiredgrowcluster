@@ -19,7 +19,7 @@ import { useLocation,useNavigate } from 'react-router-dom'
 import Swal from "sweetalert2"
 import { Keyboard } from '@capacitor/keyboard';
 import { set } from 'date-fns';
-export default function Purchase2({
+export default function Purchase2({itemScan,setItemScan,
     filteredItems,stopScanner,addItemsInBatch,
     allItems,matchedItems,setMatchedItems,setActiveTab,removeItem,updateItem,
     startScanner,result,setResult,formData,setFormData,addItem,handleAddItem,handleItemFieldChange,handleRemoveItem,scanning,setScanning,videoRef,codeReaderRef,options,items,selectedWarehouse
@@ -75,7 +75,7 @@ const handleViewInfo = (item) => {
   setShowInfoModal(true);
 };
 
-     const[itemScan,setItemScan]=useState(false)
+     
      
   const handleQuanity = (id, type) => {
   console.log("handleQuantity", id, type);
@@ -161,6 +161,8 @@ useEffect(() => {
 
   
   if(itemScan) return <PurchaseScanner addItemsInBatch={addItemsInBatch} startScanner={startScanner} matchedItems={matchedItems} setMatchedItems={setMatchedItems} stopScanner={stopScanner} allItems={allItems} handleQuanity={handleQuanity}  videoRef={videoRef}  addItem={addItem} setItemScan={setItemScan}/>
+  
+  
   return (
     
 <div className="min-h-screen pb-24 bg-gray-50">

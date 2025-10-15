@@ -15,13 +15,12 @@ import ItemListPage from './ItemListPage';
 import { jsPDF } from 'jspdf';
 import  {autoTable} from 'jspdf-autotable';
 import Select from "react-select"
+import ChangeStatusModal from './ChangeStatusModal';
 const OrderList = () => {
-  const link="https://pos.inspiredgrow.in/vps"
+  const[users,setUsers]=useState([]);
   const [loading, setLoading] = useState(false);
   const [actionMenu, setActionMenu] = useState(null);
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [status, setStatus] = useState([]);
-  const [users, setUsers] = useState([]); // User state
+  const [isSidebarOpen, setSidebarOpen] = useState(true)                     
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [permissions, setPermissions] = useState([]);
@@ -39,16 +38,22 @@ const OrderList = () => {
   const[items,setItems]=useState([])
   const[heading,setHeading]=useState("")
   const[orderId,setOrderId]=useState(null)
-  const[orderStatus,setOrderStatus]=useState("Pending")
+  const[orderStatus,setOrderStatus]=useState("all")
+  const [changeStatus,setChangeStatus]=useState(false)
+  const [nowStatus,setNowStatus]=useState("")
   const statusOptions = [
-  { value: "Pending", label: "Pending", icon: "⏳", color: "orange" },
-  { value: "Confirmed", label: "Confirmed", icon: "✓", color: "blue" },
+  { value: "all", label: "All", icon: "⏳", color: "orange" },
+  { value: "Pending", label: "Pending", icon: "⚙️", color: "orange" },
   { value: "Processing", label: "Processing", icon: "⚙️", color: "purple" },
-  { value: "Shipped", label: "Shipped", icon: "🚚", color: "indigo" },
-  { value: "Out for Delivery", label: "Out for Delivery", icon: "🛵", color: "teal" },
-  { value: "Delivered", label: "Delivered", icon: "✅", color: "green" },
-  { value: "Cancelled", label: "Cancelled", icon: "❌", color: "red" },
-  { value: "Returned", label: "Returned", icon: "🔄", color: "gray" }
+    { value: "Shipped", label: "Shipped", icon: "🚚", color: "indigo" },
+    { value: "Rider Assigned", label: "Rider Assigned", icon: "🛵", color: "yellow" },
+    { value: "Van Assigned", label: "Van Assigned", icon: "🛵", color: "blue" },
+    { value: "Out for Delivery", label: "Out for Delivery", icon: "🛵", color: "teal" },
+    { value: "Delivered", label: "Delivered", icon: "✅", color: "green" },
+    { value: "Cancelled", label: "Cancelled", icon: "❌", color: "red" },
+    { value: "Returned", label: "Returned", icon: "🔄", color: "gray" },
+    { value: "Order Placed", label: "Order Placed", icon: "✅", color: "green" },
+    { value: "Arrived at Location", label: "Arrived at Location", icon: "✅", color: "purple" },
 ];
 
   // load sidebar open/closed
@@ -71,7 +76,7 @@ const OrderList = () => {
     return ;
   }
   try {
-    const response = await axios.get(`${link}/api/warehouses`, {
+    const response = await axios.get("https://pos.inspiredgrow.in/vps/api/warehouses?scope=mine", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -91,7 +96,7 @@ finally{
         const token = localStorage.getItem("token");
         try {
           // Adjust this endpoint if needed – using your provided URL.
-          const response = await fetch(`${link}/admin/store/add/store`, {
+          const response = await fetch("https://pos.inspiredgrow.in/vps/admin/store/add/store", {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!response.ok) {
@@ -118,11 +123,12 @@ finally{
     }
 
     try {
-      const response = await fetch(`${link}/api/order/all`, {
+      const response = await fetch("https://pos.inspiredgrow.in/vps/api/orders/admin", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await response.json();
-        
+         console.log("payload")
+         console.log(payload)
       // unwrap into a flat array
       const all = Array.isArray(payload)
         ? payload
@@ -144,7 +150,7 @@ finally{
     if (!window.confirm("Delete this order?")) return;
     setLoading(true);
     try {
-      await axios.delete(`${link}/api/order/${id}`, {
+      await axios.delete(`https://pos.inspiredgrow.in/vps/api/orders/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       fetchusers();
@@ -164,16 +170,27 @@ finally{
   
   // filtering & paging
   const filtered = users.filter(u => {
-    const t = searchTerm.toLowerCase().trim();
-    return !t
-      || u.userName?.toLowerCase().includes(t)
-      || u.Email?.toLowerCase().includes(t) ||
-      u.status===orderStatus
-  });
+  const t = searchTerm.toLowerCase().trim();
+  const matchesSearch = !t 
+    || u.userName?.toLowerCase().includes(t) 
+    || u.Email?.toLowerCase().includes(t);
+
+  const matchesStatus = orderStatus === "all" || u.status === orderStatus;
+
+  return matchesSearch && matchesStatus;
+});
+
   useEffect(()=>{
-     const filtered = users.filter(u => 
-      u.status===orderStatus
-  );
+    const filtered = users.filter(u => {
+  const t = searchTerm.toLowerCase().trim();
+  const matchesSearch = !t 
+    || u.userName?.toLowerCase().includes(t) 
+    || u.Email?.toLowerCase().includes(t);
+
+  const matchesStatus = orderStatus === "all" || u.status === orderStatus;
+
+  return matchesSearch && matchesStatus;
+});
   },[orderStatus])
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const start = (currentPage - 1) * itemsPerPage;
@@ -330,7 +347,7 @@ const copyToClipboard = () => {
     <div className="flex flex-col ">
       <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
      
-      <div className="box-border flex min-h-screen">
+      <div className="flex w-full min-h-screen">
         <div className='w-auto'>
           <Sidebar isSidebarOpen={isSidebarOpen} />
         </div>
@@ -369,6 +386,10 @@ const copyToClipboard = () => {
             ItemListView &&
             <ItemListPage items={items} heading={heading} onClose={()=>setItemListView(false)}/>
           }
+          {
+            changeStatus &&
+                 <ChangeStatusModal orderId={orderId} currentStatus={nowStatus} onClose={()=>{setChangeStatus(false);setOrderId(null);setNowStatus("")}} fetchOrders={fetchusers}/>
+          }
           <div className="p-4 bg-white border rounded-lg shadow-md">
             
      
@@ -380,7 +401,7 @@ const copyToClipboard = () => {
                   </div>
      </div>
             {/* controls */}
-            <div className="flex flex-col mb-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col w-full mb-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2 mb-2 md:mb-0">
                 <span>Show</span>
                 <select
@@ -397,7 +418,7 @@ const copyToClipboard = () => {
                 <button onClick={exportToExcel} className="w-full px-3 py-2 text-sm text-white bg-cyan-500 lg:w-auto">Excel</button>
                 <button onClick={exportToPDF} className="w-full px-3 py-2 text-sm text-white bg-cyan-500 lg:w-auto">PDF</button>
                 <button onClick={handlePrint} className="w-full px-3 py-2 text-sm text-white bg-cyan-500 lg:w-auto">Print</button>
-                <button onclick={exportToCSV} className="w-full px-3 py-2 text-sm text-white bg-cyan-500 lg:w-auto">CSV</button>
+                <button onClick={exportToCSV} className="w-full px-3 py-2 text-sm text-white bg-cyan-500 lg:w-auto">CSV</button>
                 {/* Copy / Excel / PDF / Print / CSV buttons */}
                 <input
                   className="w-full p-1 border rounded"
@@ -408,10 +429,11 @@ const copyToClipboard = () => {
             </div>
 
             <div className="w-full overflow-x-auto overflow-y-visible">
-              <table className="w-full border border-collapse">
-                <thead className="bg-gray-200">
+              <div className='min-w-full'>
+                   <table className="w-full overflow-x-auto border-gray-300 table-auto">
+                <thead className="w-full bg-gray-200">
                   <tr>
-                    {["#","Order ID"," Customer Name","Items","UnAvailable Items","Total","Status","DeliveryAgent","Action"]
+                    {["#","Order ID"," Customer Name","Items","Total","Status","Assigned Van","Assigned Rider","Action"]
                       .map(h => <th key={h} className="p-1 border">{h}</th>)}
                   </tr>
                 </thead>
@@ -422,7 +444,7 @@ const copyToClipboard = () => {
                       <tr key={u._id} className="text-sm">
                         <td className="p-1 border">{start + i + 1}</td>
                         <td className="p-1 border">
-                          {u.orderId}
+                          {u.orderNumber}
                         </td>
                        <td className="p-1 border ">
   <span
@@ -434,7 +456,7 @@ const copyToClipboard = () => {
       }
     }}
   >
-    {u.customer?.customerName}
+    {u.customer?.name}
   </span>
 </td>
 
@@ -481,50 +503,13 @@ const copyToClipboard = () => {
                                 
                         
 
-               <td 
-  className={`
-    p-3 border 
-    ${u.unAvailableItems.length > 0 
-      ? "text-blue-500 hover:text-blue-700 hover:bg-blue-50 cursor-pointer transition-colors duration-200" 
-      : "text-gray-400"}
-    ${u.unAvailableItems.length > 0 && "font-medium"}
-  `}
-  onClick={() => {
-    if (u.unAvailableItems.length > 0) {
-      setItemListView(true);
-      setItems(u.unAvailableItems);
-      setHeading("UnAvailable Items")
-    }
-  }}
->
-  <div className="flex items-center justify-between">
-    <span>
-      {u.unAvailableItems.length > 0 ? "View items" : "All items available"}
-    </span>
-    {u.unAvailableItems.length > 0 && (
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        className="w-4 h-4 ml-1" 
-        fill="none" 
-        viewBox="0 0 24 24" 
-        stroke="currentColor"
-      >
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          strokeWidth={2} 
-          d="M9 5l7 7-7 7" 
-        />
-      </svg>
-    )}
-  </div>
-</td>
+     
 
                             
                         <td className="p-1 border hover:text-blue-400 hover:cursor-pointer" onClick={()=>{
                             setViewPrice(true);
                             setPriceData(u)
-                        }}>{u.items.length===0?0:u.finalAmount}</td>
+                        }}>{u.totalAmount}</td>
                         {/* <td className="p-1 border">{u.status}</td> */}
                           <td className="p-2 border border-gray-200">
   {(() => {
@@ -568,7 +553,17 @@ const copyToClipboard = () => {
         color: 'bg-gray-100 text-gray-800',
         icon: '🔄',
         label: 'Returned'
-      }
+      },
+       'Rider Assigned': {
+    color: 'bg-yellow-100 text-yellow-800',
+    icon: '🛵',
+    label: 'Rider Assigned'
+  },
+   'Van Assigned': {
+    color: 'bg-blue-100 text-gray-800',
+    icon: '🛵',
+    label: 'Van Assigned'
+  }
     };
 
     const config = statusConfig[u.status] || {
@@ -591,16 +586,10 @@ const copyToClipboard = () => {
 </td> 
 
 <td className="p-1 text-gray-800 border">
-  <div className="flex items-center gap-1">
-    {u.deliveryAgent?.username || u.deliveryAgent?.warehouseName || (
-      <span className="text-gray-400">Not Assigned</span>
-    )}
-    {u.deliveryAgentModel && (
-      <span className="ml-1 text-xs text-gray-500">
-        ({u.deliveryAgentModel})
-      </span>
-    )}
-  </div>
+  {u.assignVan? u.assignVan.warehouseName : 'Not Assigned'}
+</td>
+<td className="p-1 text-gray-800 border">
+  {u.assignRider? u.assignRider.username : 'Not Assigned'}
 </td>
 
 
@@ -683,6 +672,27 @@ const copyToClipboard = () => {
             {/* Divider */}
             <div className="my-1 border-t border-gray-200"></div>
 
+
+            {/* Change Status Action */}
+            {/* Change Status Action */}
+<button
+  className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 transition-colors duration-150 hover:bg-blue-50 hover:text-blue-600 group"
+  role="menuitem"
+  onClick={() => {
+    setNowStatus(u.status);
+    setOrderId(u._id);
+    setChangeStatus(true);
+    setActionMenu(null);
+  }}
+>
+  <div className="p-1 mr-2 transition-colors rounded-md bg-blue-50 group-hover:bg-blue-100">
+    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.75">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </div>
+  <span>Change Status</span>
+</button>
+
             {/* Delete Action */}
             <button
               className="flex items-center w-full px-4 py-2 text-sm text-red-600 transition-colors duration-150 hover:bg-red-50"
@@ -712,6 +722,7 @@ const copyToClipboard = () => {
                   }
                 </tbody>
               </table>
+              </div>
             </div>
 
 

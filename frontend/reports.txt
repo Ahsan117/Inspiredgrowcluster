@@ -1,0 +1,81 @@
+### Complete List of All 75 Reports for Grocery On Wheels
+
+Here's the full list of 75 reports (your original 50 + 25 additional ones) in a structured table format. You can easily copy this into a tool like Google Docs, Microsoft Word, or an online Markdown-to-PDF converter (e.g., pandoc or dillinger.io) to generate a PDF. If you need a custom export script (e.g., Node.js to PDF via Puppeteer in your codebase), let me know!
+
+| #  | Report Name                      | Description                                                                 | Key Sources                          | Feasibility |
+|----|----------------------------------|-----------------------------------------------------------------------------|--------------------------------------|-------------|
+| 1  | Stock Report                     | Current stock levels by item/warehouse, with totals.                        | inventories.json, items.json         | High       |
+| 2  | Sales Report                     | Daily/monthly sales totals, revenue, units sold by warehouse.               | orders.json, ledgers.json            | High       |
+| 3  | Purchase Report                  | Inbound purchases, costs by vendor/item.                                    | deposits.json, items.json            | Medium     |
+| 4  | Purchase Return Report           | Returned purchases, reasons, value impact.                                  | ledgers.json (negatives)             | Medium     |
+| 5  | Sales Return                     | Returned sales qty/value, by item/customer.                                 | orders.json, ledgers.json            | Medium     |
+| 6  | Bill Wise Profit                 | Profit margins per order/bill.                                              | orders.json, items.json              | Medium     |
+| 7  | Item Wise Profit Report          | Profit per item, including margins and totals.                              | orders.json, items.json              | High       |
+| 8  | Stock Transfer Report            | Transfers between warehouses, amounts/qty.                                  | moneytransfers.json, ledgers.json    | High       |
+| 9  | Sale Item Report                 | Sold items details: qty, value, top sellers.                                | orders.json, items.json              | High       |
+| 10 | Item Stock (Date-Wise Report)    | Stock levels tracked over time per item.                                    | inventories.json, ledgers.json       | High       |
+| 11 | Stock Comparison Report          | Compare stock across warehouses/periods.                                    | inventories.json                     | High       |
+| 12 | Customer Report                  | Customer profiles, spends, balances.                                        | customers.json, customerdatas.json   | High       |
+| 13 | Seller Point Report              | Points earned/redeemed by sellers/customers.                                | customers.json, orders.json          | Medium     |
+| 14 | Club Bill                        | Grouped bills for clubs/members.                                            | orders.json, customers.json          | Medium     |
+| 15 | All Transactions                 | Master log of all financial movements.                                      | ledgers.json, cashtransactions.json  | High       |
+| 16 | Expense Report                   | Expenses by category/date, totals.                                          | expenses.json, expensecategories.json| High       |
+| 17 | Ledger Report                    | Account ledgers, balances, transactions.                                    | ledgers.json                         | High       |
+| 18 | Customer Order Report            | Orders per customer, status history.                                        | orders.json, customers.json          | High       |
+| 19 | Delivery Charges Report          | Collected fees, by order/threshold.                                         | orders.json, deliverysettings.json   | High       |
+| 20 | Delivery Boy Report              | Performance: assignments, completion rates.                                 | orders.json, deliveryboys.json       | High       |
+| 21 | Customer Order Analysis          | AOV, order frequency, trends per customer.                                  | orders.json, customers.json          | Medium     |
+| 22 | Report Master                    | Dashboard/master view linking all reports with filters.                     | All collections                      | High       |
+| 23 | P&L                              | Profit & Loss statement: revenue - expenses.                                | ledgers.json, expenses.json          | High       |
+| 24 | Party Wise Sold Item Report      | Items sold per customer/party.                                              | orders.json, customers.json          | High       |
+| 25 | Low Stock Report                 | Items below alert threshold.                                                | inventories.json, items.json         | High       |
+| 26 | Dead Stock Report                | Unsold stock over time (e.g., 90 days).                                     | inventories.json, orders.json        | Medium     |
+| 27 | Inventory Turnover Report        | Turnover ratios, days to sell.                                              | inventories.json, orders.json        | Medium     |
+| 28 | Supplier Performance Report      | Vendor delivery/performance metrics.                                        | items.json, deposits.json            | Low        |
+| 29 | Sales Trend Analysis Report      | Time-series sales growth, peaks.                                            | orders.json, ledgers.json            | Medium     |
+| 30 | Expired/Obsolete Stock Report    | Expiring/obsolete items flagged.                                            | items.json, inventories.json         | Medium     |
+| 31 | Customer Retention Report        | Repeat rates, churn analysis.                                               | customers.json, orders.json          | Medium     |
+| 32 | Category-Wise Sales/Stock Report | Sales/stock breakdown by category.                                          | categories.json, orders.json         | High       |
+| 33 | Payment Pending Report           | Overdue payments, aging.                                                    | orders.json (paymentStatus)          | High       |
+| 34 | GST/Tax Compliance Report        | Tax collected, GST summaries.                                               | orders.json, customerdatas.json      | High       |
+| 35 | Forecasting Report               | Demand predictions for items.                                               | orders.json, items.json              | Medium     |
+| 36 | Discount Impact Report           | Revenue impact from discounts/coupons.                                      | orders.json, customercoupons.json    | High       |
+| 37 | Warehouse Utilization Report     | Capacity usage, orders per warehouse.                                       | orders.json, ledgers.json            | Medium     |
+| 38 | Customer Feedback Report         | Message/feedback summaries, sentiment.                                      | customermessages.json                | Medium     |
+| 39 | Subscription Report              | Recurring/subscription order trends.                                        | orders.json (recurring proxy)        | Low        |
+| 40 | Reorder Analysis Report          | Reorder points based on usage.                                              | inventories.json, orders.json        | Medium     |
+| 41 | Sales vs Inventory Report        | Sold vs. available stock variances.                                         | orders.json, inventories.json        | High       |
+| 42 | Seasonal Sales Report            | Sales by season/festival periods.                                           | orders.json                          | Medium     |
+| 43 | Customer Segmentation Report     | RFM-based customer groups.                                                  | customers.json, orders.json          | Medium     |
+| 44 | Return Reason Analysis Report    | Common return reasons, patterns.                                            | orders.json, notifications.json      | Low        |
+| 45 | Cash Flow Report                 | Inflows/outflows, projections.                                              | cashtransactions.json, deposits.json | High       |
+| 46 | Sales & Payment Method Report    | Sales split by payment type.                                                | orders.json, paymenttypes.json       | High       |
+| 47 | CLV Report (Customer Lifetime Value) | Predicted customer value over time.                                     | customers.json, orders.json          | Medium     |
+| 48 | Inventory Valuation Report       | Total value of stock (FIFO/LIFO).                                           | inventories.json, items.json         | Medium     |
+| 49 | Sales by Location Report         | Geo-based sales (city/postcode).                                            | orders.json, addresses.json          | High       |
+| 50 | Stock Movement History Report    | Full log of stock ins/outs/adjustments.                                     | ledgers.json, inventories.json       | High       |
+| 51 | Employee Performance Report      | Sales/fulfillment per employee, shift efficiency.                           | orders.json, deliveryboys.json       | High       |
+| 52 | Loss Prevention Report           | Shrinkage/theft estimates, high-risk items.                                 | inventories.json, ledgers.json       | Medium     |
+| 53 | Customer Engagement Report       | Repeat visits, session duration proxies via orders.                         | customers.json, orders.json          | High       |
+| 54 | Conversion Rate Report           | Cart-to-order completion rates.                                             | cartitems.json, orders.json          | High       |
+| 55 | Traffic Sources Report           | Order origins (app/web/referrals).                                          | orders.json, customers.json (referralCode) | Medium     |
+| 56 | Campaign Performance Report      | ROI on promotions/banners.                                                  | bannerproducts.json, orders.json     | Medium     |
+| 57 | Product Performance Report       | Views/sales per item, velocity.                                             | items.json, orders.json              | High       |
+| 58 | Pricing Optimization Report      | Price elasticity, suggested adjustments.                                    | items.json (salesPrice vs. mrp), orders.json | Medium     |
+| 59 | Promotion Effectiveness Report   | Lift in sales from discounts/offers.                                        | orders.json (discountApplied), customercoupons.json | High       |
+| 60 | Basket Analysis Report           | Common item bundles, cross-sell opportunities.                              | orders.json (items array)            | Medium     |
+| 61 | Supply Chain Efficiency Report   | Lead times, inbound delays (proxy via deposits).                            | deposits.json, inventories.json      | Medium     |
+| 62 | Vendor Scorecard Report          | Supplier reliability, on-time delivery.                                     | deposits.json, items.json (brand)    | Low        |
+| 63 | Waste Reduction Report           | Expired/discarded stock value.                                              | items.json (expiryDate), inventories.json | Medium     |
+| 64 | Shelf Life Management Report     | Average days to sell by category.                                           | orders.json, items.json              | High       |
+| 65 | Customer Journey Report          | Funnel from cart to delivery, drop-offs.                                    | cartitems.json, checkoutsessions.json, orders.json | High       |
+| 66 | A/B Testing Results Report       | Test outcomes for pricing/promos (if tracked).                              | orders.json (notes field)            | Medium     |
+| 67 | Multi-Channel Sales Report       | Sales split by app/web/POS.                                                 | orders.json (posCreated), customers.json | High       |
+| 68 | Competitor Benchmarking Report   | Market share proxies vs. industry averages.                                 | orders.json (external benchmarks needed) | Low        |
+| 69 | Heatmap Insights Report          | User interaction hotspots (from frontend logs).                             | devicetokens.json, customermessages.json | Medium     |
+| 70 | Session Replay Summary           | User behavior patterns from sessions.                                       | notifications.json, conversations.json | Low        |
+| 71 | Referral Conversion Report       | Success rate of referral codes.                                             | customers.json (referralCode), orders.json | High       |
+| 72 | Operational Cost Breakdown       | Costs per order (delivery + processing).                                    | orders.json, expenses.json           | High       |
+| 73 | Demand Forecasting by Category   | Predicted sales volume per category.                                        | orders.json, categories.json         | Medium     |
+| 74 | Sustainability Impact Report     | Waste metrics, eco-friendly item sales.                                     | inventories.json, items.json (if tagged) | Medium     |
+| 75 | Overall KPI Dashboard            | 40+ KPIs: sales growth, cash flow, engagement.                              | All (aggregated)                     | High

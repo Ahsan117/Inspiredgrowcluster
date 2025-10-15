@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState ,useEffect} from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { Preferences } from '@capacitor/preferences';
 
 const AuditorLogin = () => {
   const [user, setUser] = useState({ username: "", password: "" });
@@ -10,6 +11,24 @@ const AuditorLogin = () => {
   const handleChange = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
+
+  useEffect(()=>{
+     const checkSession = async () => {
+    const { value: token } = await Preferences.get({ key: "audit_token" });
+    const { value: id } = await Preferences.get({ key: "audit_id" });
+    const { value: role } = await Preferences.get({ key: "audit_role" });
+    const { value: auditId } = await Preferences.get({ key: "audit_auditId" });
+    if (token && id && role && auditId) {
+      // already logged in → redirect
+      localStorage.setItem("token", token);
+      localStorage.setItem("id", id);
+      localStorage.setItem("role", role);
+      localStorage.setItem("auditId", auditId);
+      navigate("/auditor-dashboard");
+    }
+  };
+  checkSession();
+  },[])
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +50,11 @@ const AuditorLogin = () => {
      
       // localStorage.setItem("id", res.data.user.id)
       // save storeId so you know which store this user belongs to
-     
+      await Preferences.set({ key: "audit_token", value: res.data.token });
+    await Preferences.set({ key: "audit_id", value: res.data.user.id });
+    await Preferences.set({ key: "audit_role", value: res.data.user.role });
+    await Preferences.set({ key: "audit_auditId", value: res.data.user.auditId });
+
 
       alert("Audit User logged in successfully!");
       navigate("/auditor-dashboard");

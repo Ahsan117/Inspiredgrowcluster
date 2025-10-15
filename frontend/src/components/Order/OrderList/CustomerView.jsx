@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState ,useEffect} from 'react';
 import {
   Card,
   Descriptions,
@@ -19,16 +19,15 @@ import {
 import axios from 'axios';
 
 const CustomerProfile = ({ customerData, visible, onClose }) => {
-  const link="https://pos.inspiredgrow.in/vps"
   const [customer, setCustomer] = useState(customerData);
   const [loading, setLoading] = useState(false);
-
+  const [address, setAddress] = useState({});
   const handleStatusToggle = async () => {
     try {
       setLoading(true);
       const newStatus = customer.status === 'active' ? 'inactive' : 'active';
 
-      const response = await axios.patch(`${link}/api/customers/${customer._id}`, {
+      const response = await axios.patch(`https://pos.inspiredgrow.in/vps/customers/${customer._id}`, {
         status: newStatus
       });
 
@@ -50,6 +49,26 @@ const CustomerProfile = ({ customerData, visible, onClose }) => {
       setLoading(false);
     }
   };
+   
+   useEffect(()=>{
+     const fetchAddress = async () => {
+      try {
+        const response = await axios.get(`https://pos.inspiredgrow.in/vps/api/addresses/admin/all`,
+          {
+               headers:{
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+          }
+        );
+        const addressData = response.data.data.find(address => address.user?._id === customer._id);
+        setAddress(addressData || {});
+        console.log('Address Data:', response.data);
+      } catch (error) {
+        console.error('Error fetching customer data:', error);
+      }
+    };
+    fetchAddress();
+  },[])
 
   const statusTag = {
     active: <Tag color="green">Active</Tag>,
@@ -106,7 +125,7 @@ const CustomerProfile = ({ customerData, visible, onClose }) => {
                   {customer._id || 'N/A'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Name">
-                  {customer.customerName}
+                  {customer.name}
                 </Descriptions.Item>
                
                 <Descriptions.Item label="Join Date">
@@ -125,13 +144,13 @@ const CustomerProfile = ({ customerData, visible, onClose }) => {
                   {customer.mobile || customer.phone || 'N/A'}
                 </Descriptions.Item>
                 <Descriptions.Item label={<><EnvironmentOutlined /> Address</>}>
-                  {customer.address ? (
+                  {address ? (
                     <>
-                      {customer.address.houseNo && `${customer.address.houseNo}, `}
-                      {customer.address.area && `${customer.address.area}, `}
-                      {customer.address.city && `${customer.address.city}, `}
-                      {customer.address.state && `${customer.address.state}, `}
-                      {customer.address.postalCode && `${customer.address.postalCode}`}
+                     {address.houseNo && `${address.houseNo}, `}
+                      {address.area && `${address.area}, `}
+                      {address.city && `${address.city}, `}
+                      {address.state && `${address.state}, `}
+                      {address.postalCode && `${address.postalCode}`}
                     </>
                   ) : 'N/A'}
                 </Descriptions.Item>
@@ -192,7 +211,7 @@ const CustomerProfile = ({ customerData, visible, onClose }) => {
             <div>
               <h3 className="font-semibold">Customer Image</h3>
               <img
-                src={`http://localhost:5000/uploads/${customer.customerImage}`}
+                src={`uploads/${customer.customerImage}`}
                 alt="Customer"
                 className="object-cover w-32 h-32 border rounded-md"
               />

@@ -87,7 +87,7 @@ function buildInvoiceHTML(order, payments = [], store, cust, rows, sellerName = 
 const ReceiptPage = ({
     print,setPrint
 }) => {
-  console.log(print)
+  console.log("print",print)
   const d={
     order:{...print,rows:print.items},
     payments:print.payments,
@@ -101,7 +101,8 @@ const ReceiptPage = ({
   email:       "INSPIREDGROW@GMAIL.COM",
     },
     customer:print.customer,
-    rows:print.items
+    rows:print.items,
+    exclusiveDiscount:print.exclusiveDiscount || 0
   }
   const Navigate = useNavigate();
    useEffect(() => {
@@ -146,7 +147,7 @@ const ReceiptPage = ({
     // --- Bluetooth Functions ---
 
 const generatePlainTextReceipt = () => {
-  const { order, customer, store, payments } = mockData;
+  const { order, customer, store, payments, exclusiveDiscount } = mockData;
    console.log("Mock Data",mockData)
   const lineWidth = 42; // Standard for 3-inch (80mm) Epson P80 printers
   const line = '-'.repeat(lineWidth) + '\n';
@@ -295,7 +296,7 @@ const paid = payments.reduce((sum, p) => sum + p.amount, 0);
       
 const prevDue = order.previousBalance  || 0;
 
-const totalDue = prevDue + netBeforeTax + taxAmt - paid;
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
 
 
   const addSummaryLine = (label, value) => {
@@ -308,7 +309,10 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid;
   text += addSummaryLine('Net Before Tax:', totalSales?.toFixed(2));
   text += addSummaryLine('Tax Amount:', taxAmt?.toFixed(2));
   text += addSummaryLine('Additional Charges:', additionalCharges?.toFixed(2));
-  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales + additionalCharges)?.toFixed(2) || 0);
+  if(exclusiveDiscount > 0)
+  text += addSummaryLine('Premium Membership Discount:',`-${exclusiveDiscount?.toFixed(2) || 0}`);
+  
+  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales + additionalCharges - exclusiveDiscount)?.toFixed(2) || 0);
   text += addSummaryLine('Paid Payment:', paid?.toFixed(2));
   text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
   text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
@@ -346,7 +350,7 @@ const printinfo = generatePlainTextReceipt();
 
   } catch (error) {
     console.error("Bluetooth print error:", error);
-    alert("❌ Unexpected error occurred.");
+    
   } finally {
     setLoading(false);
   }
@@ -355,7 +359,10 @@ const printinfo = generatePlainTextReceipt();
 
 
 const handleShare  = async () => {
-  const receiptElement = document.getElementById('hidden-receipt');
+
+
+  try {
+      const receiptElement = document.getElementById('hidden-receipt');
 
   if (!receiptElement) {
     console.error("Receipt element not found.");
@@ -369,8 +376,7 @@ const handleShare  = async () => {
     html2canvas: {},
     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
-
-  try {
+  
     setLoading(true);
     const pdfBlob = await html2pdf().from(receiptElement).set(opt).outputPdf('blob');
 
@@ -469,7 +475,7 @@ const handleDownload = async () => {
     
     // --- This function generates the on-screen view ---
     const generateReceiptHtml = () => {
-        const { order, customer, seller, store, payments, dues } = d;
+        const { order, customer, seller, store, payments, dues ,exclusiveDiscount} = d;
          console.log("1")
          
         const totalQuantity = order.rows.reduce((sum, item) => sum + item.quantity, 0);
@@ -490,7 +496,7 @@ const paid = payments.reduce((sum, p) => sum + p.amount, 0);
       
 const prevDue = order.previousBalance  || 0;
 
-const totalDue = prevDue + netBeforeTax + taxAmt - paid;
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
 
 const finalTotal = netBeforeTax + taxAmt;
         console.log(7)
@@ -562,7 +568,9 @@ console.log(8)
                         <tr><td>Net Before Tax</td><td class="r">${totalSales?.toFixed(2) || 0}</td></tr>
                         <tr><td>Tax Amount</td><td class="r">${taxAmt?.toFixed(2) || 0}</td></tr>
                         <tr><td>Additional Charges</td><td class="r">${additionalCharges?.toFixed(2) || 0}</td></tr>
-                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales + additionalCharges)?.toFixed(2) || 0}</strong></td></tr>
+                                                ${exclusiveDiscount > 0 && (`<tr><td>Premium Membership Discount</td><td class="r">−${exclusiveDiscount?.toFixed(2) || 0}</td></tr>`)}
+
+                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales + additionalCharges - exclusiveDiscount)?.toFixed(2) || 0}</strong></td></tr>
                         <tr><td>Paid Payment</td><td class="r">${paid?.toFixed(2) || 0}</td></tr>
                         <tr><td>Previous Due</td><td class="r">${prevDue?.toFixed(2) || 0}</td></tr>
                         <tr><td><strong>Total Due Amount</strong></td><td class="r"><strong>${totalDue?.toFixed(2) || 0}</strong></td></tr>
@@ -594,7 +602,7 @@ if(loading) return <LoadingScreen />;
         <div className="flex justify-between mb-4 bg-white border rounded-lg shadow-md">
             <button 
                 onClick={()=>{
-                    Navigate("/dashboard");setPrint(null)
+                    Navigate("/dashboard");setPrint(null);setDevice(false)
                 }} 
                 className="flex items-center px-4 py-2 text-gray-700 rounded hover:bg-gray-200"
             >

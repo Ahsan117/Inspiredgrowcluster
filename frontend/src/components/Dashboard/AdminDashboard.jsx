@@ -6,6 +6,7 @@ import MetricCard from "./MetricCard";
 import Card from "./Card";
 import axios from "axios";
 import Select from "react-select";
+import { MdOutlineDateRange, MdMoreVert, MdEuro, MdPayments, MdDelete, MdPictureAsPdf, MdPrint } from 'react-icons/md';
 import { FaCube,FaRegCalendarAlt ,FaMinusSquare,FaFileAlt,FaUsers,FaTruck,FaBriefcase,FaShoppingCart} from 'react-icons/fa';
 // import BarChartComponent from "./BarChart";
 // import TrendingItemsDonut from "./PieChart";
@@ -17,6 +18,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { useLocation } from "react-router-dom";
 import BluetoothConnector from "../../pages/BluetoothDevicesPage";
 import Print from "./Print";
+import CardOtpModal from "./CardApply";
 const Dashboard = () => {
 
    const [print,setPrint]=useState(null);
@@ -60,7 +62,9 @@ const Dashboard = () => {
  const [actionMenu, setActionMenu] = useState(null);
    const [device,setDevice] = useState(false);
    const [selectedDate, setSelectedDate] = useState(""); // store date string YYYY-MM-DD
-
+   const [filteredSales, setFilteredSales] = useState([]);  
+    const [showModal, setShowModal] = useState(false);
+    const [sa, setSa] = useState(null);
   const userRole = (localStorage.getItem("role") || "guest").toLowerCase();
   const isAdmin = userRole === "admin";
 
@@ -154,7 +158,7 @@ const Dashboard = () => {
 
   const fetchSale = async () => {
   try {
-    const response = await axios.get(`${link}/api/pos/club`, {
+    const response = await axios.get(`${link}/api/pos/club/dashboard`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       }
@@ -169,7 +173,7 @@ const Dashboard = () => {
 
 
   const handleEditPaymentType = (inv) => {
-    const saleDate = new Date(inv.saleDate).toISOString().slice(0, 10);
+    const saleDate = new Date(inv.createdAt).toISOString().slice(0, 10);
     console.log(`Checking edit payment type for invoice ${inv._id}: saleDate=${saleDate}, today=${today}`);
     if (saleDate !== today) {
       alert("Editing payment type is only allowed for invoices from today.");
@@ -224,7 +228,6 @@ const Dashboard = () => {
           value: pt._id,
         }));
         setPaymentTypes(formattedPaymentTypes);
-        console.log("Fetched payment types:", formattedPaymentTypes);
       }
     } catch (error) {
       console.error("Error fetching payment types:", error.message);
@@ -308,11 +311,10 @@ const handleEntriesChange = (e) => {
 
 
     useEffect(()=>{
-     const invoices=sales;
+    
       const period = active; // 'today', 'weekly', 'monthly', 'yearly', or 'all'
         const now = new Date();
   let start = null;
-    console.log("active",invoices)
   switch (period) {
     case 'today':
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -338,9 +340,8 @@ const handleEntriesChange = (e) => {
   let totalSale = 0;
   let cashSale = 0;
   let bankSale = 0;
-
-  invoices.forEach(inv => {
-    const date = new Date(inv.createdAt);
+  sales.forEach(inv => {
+    const date = new Date(inv.saleDate);
     if (!start || date >= start) {
       const amount = inv.totalAmount || inv.grandTotal || 0;
       const p = inv.payments?.[0];
@@ -355,25 +356,28 @@ const handleEntriesChange = (e) => {
    setTotalSale(totalSale.toFixed(2));
    setCashSale(cashSale);
    setBankSale(bankSale.toFixed(2));
-    },[active])
+    },[active,sales])
 
 
+    useEffect(() => {
+      setFilteredSales(sales
+    .filter(item => !selectedDate || item.saleDate?.slice(0, 10) === selectedDate)
+    .sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate))
+    .slice(0, 10))
+    },[sales,selectedDate])
+
+
+    
     //for action menu functionality in recent sale
     const handleViewSales = (inv) => {
     navigate(`/view-sale?id=${inv._id}&source=${inv.source}`);
   };
 
   const handleEdit = (inv) => {
-    const created = new Date(inv.saleDate);
-    const now = new Date();
-    const diffDays = (now - created) / (1000*60*60*24);
-    if (diffDays > 2) {
-      return alert("You can only edit invoices up to 7 days old.");
-    }
     if (inv.source === "Sale") {
-      navigate(`/add-sale?id=${inv._id}`);
+       navigate(`/add-sale?id=${inv._id}`);
     } else {
-      navigate(`/pos-main?id=${inv._id}`);
+       navigate(`/pos-main?id=${inv._id}`);
     }
   };
 
@@ -508,6 +512,7 @@ const handleEntriesChange = (e) => {
     
 
 const generatePlainTextReceipt = (data) => {
+  console.log(data)
   const store = {
     logo:      "/logo/inspiredgrow.jpg",
     storeName: "Grocery on Wheels",
@@ -586,8 +591,8 @@ const formatItemRow = (item, idx) => {
   store.address.split("\n").forEach(l => text += centerText(l) + "\n");
   text += line;
 
-  text += twoColumn(`Date: ${data.saleDate.substring(0, 10)}`,
-                    `Time: ${data.saleDate.substring(11, 16)}`) + "\n";
+  text += twoColumn(`Date: ${data.createdAt.substring(0, 10)}`,
+                    `Time: ${data.createdAt.substring(11, 16)}`) + "\n";
   text += `Customer: ${data.customer?.customerName || "walk-in customer"}\n`;
   text += line;
 
@@ -608,8 +613,8 @@ const formatItemRow = (item, idx) => {
   const otherChg   = data.otherCharges || 0;
   const paid       = data.payments.reduce((s, p) => s + p.amount, 0);
   const prevDue    = data.previousBalance || 0;
-  const grandTotal = totalSale + taxAmt + otherChg;
-  const totalDue   = prevDue + grandTotal - paid;
+  const grandTotal = totalSale + taxAmt + otherChg-(data.exclusiveDiscount || 0);
+  const totalDue   = prevDue + grandTotal - paid-  (data.exclusiveDiscount || 0);
 
   const sumLine = (lbl, val) => `${padRight(lbl, 34)}${padLeft(val.toFixed(2), 8)}\n`;
 
@@ -619,6 +624,8 @@ const formatItemRow = (item, idx) => {
   text += sumLine("Net Before Tax:",  totalSale);
   text += sumLine("Tax Amount:",      taxAmt);
   text += sumLine("Other Charges:",   otherChg);
+   if(data.exclusiveDiscount > 0)
+  text += sumLine('Premium Membership Discount:',`-${(data.exclusiveDiscount || 0)?.toFixed(2) || 0}`);
   text += sumLine("Total:",           grandTotal);
   text += sumLine("Paid Payment:",    paid);
   text += sumLine("Previous Due:",    prevDue);
@@ -635,13 +642,29 @@ const formatItemRow = (item, idx) => {
   return text;
 };
 
+const GetSale=async (sale)=>{
+  try {
+       const url= sale.source==="Sale"?`https://pos.inspiredgrow.in/vps/api/pos/particular/sale/${sale._id}`:`https://pos.inspiredgrow.in/vps/api/pos/particular/pos/${sale._id}`;
+          const {data}= await axios.get(url,{
+            headers:{
+              Authorization: `bearer ${localStorage.getItem("token")}`
+            }
+          })
+          setPrint(data)
+          return data;
+  } catch (error) {
+    console.log("Error in fetch sale by id",error)
+  }
+}
+
 
     // --- Action Handlers ---
-   const handleBluetoothPrint = (sale) => {
+   const handleBluetoothPrint = async(sale) => {
   try {
     setLoading(true);
-
-    const printinfo = generatePlainTextReceipt(sale);
+   const sal=await GetSale(sale);
+   
+    const printinfo = generatePlainTextReceipt(sal);
     console.log(printinfo);
 
     window.bluetoothSerial.isConnected(
@@ -661,7 +684,6 @@ const formatItemRow = (item, idx) => {
 
   } catch (error) {
     console.error("Bluetooth print error:", error);
-    alert("❌ Unexpected error occurred.");
   } finally {
     setLoading(false);
   }
@@ -688,8 +710,22 @@ const formatItemRow = (item, idx) => {
       setLoading(false);
     }
   };
+   const getPaymentTypeName = (item) => item.payments[0]?.paymentType?.paymentTypeName || 'N/A';
 
-if(print) return <Print print={print} setPrint={setPrint} />
+   const getStatusClasses = (status) => {
+    switch (status) {
+      case 'Cash':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'Bank':
+        return 'bg-blue-100 text-blue-800';
+      case 'Hold':
+        return 'bg-amber-100 text-amber-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+if(print) return <Print print={print} setPrint={setPrint} setDevice={setDevice}/>
 
   return (
     <div className="flex flex-col ">
@@ -822,190 +858,148 @@ if(print) return <Print print={print} setPrint={setPrint} />
 </div>
 
 
-  <div className="flex flex-col ">
-    <div className="flex items-center justify-between p-4 bg-white border-t-4 border-blue-700 rounded-t-lg">
-  <h2 className="text-xl font-semibold">Recent Sales Invoices</h2>
-  <input
-    type="date"
-    value={selectedDate}
-    onChange={(e) => setSelectedDate(e.target.value)}
-    className="px-3 py-1 text-sm border rounded"
-  />
-</div>
-    <div className="w-full overflow-x-auto border border-gray-200 rounded-b-md ">
-     {(()=>{
-       
-        const filteredSales = sales
-  .filter((item) => {
-    const saleDate = item.createdAt?.slice(0, 10); // format: YYYY-MM-DD
-    if (!selectedDate) {
-      const today = new Date().toISOString().slice(0, 10);
-      return saleDate === today;
-    }
-    return saleDate === selectedDate;
-  })
-  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  .slice(0, 10);
-         
-     return ( <table className="w-full bg-white">
-  <thead>
-    <tr className="text-center bg-gray-100">
-      <th className="text-sm text-center border-b">Sl.No</th>
-      <th className="text-sm text-center border-b">Total</th>
-      <th className="text-sm text-center border-b">Status</th>
-    </tr>
-  </thead>
-  <tbody>
-    {filteredSales.length > 0 ? (
-      filteredSales
-        .map((item, index) => (
-          <tr key={item._id}>
-            {/* Serial Number */}
-           <td className="relative text-sm text-center border-b">
-  <span
-    className="text-blue-600 cursor-pointer hover:underline"
-    onClick={() => setActionMenu(actionMenu === item._id ? null : item._id)}
-  >
-    {item.saleCode}
-  </span>
-
-  {actionMenu === item._id && (
-    <div className="absolute right-0 z-50 w-48 mt-1 bg-white border rounded shadow-lg">
-     
-      <button
-        className="w-full px-3 py-2 text-left text-blue-500 hover:bg-gray-100"
-         onClick={() => { handleViewSales(item); setActionMenu(null); }}
-      >
-        📄 View Sales
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-green-500 hover:bg-gray-100"
-         onClick={() => { handleEdit(item); setActionMenu(null); }}
-      >
-        ✏️ Edit
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-teal-500 hover:bg-gray-100"
-         onClick={() => { handleEditPaymentType(item); setActionMenu(null); }}
-      >
-        💵 Edit Payment Type
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-purple-500 hover:bg-gray-100"
-         onClick={() => { handleViewPayments(item); setActionMenu(null); }}
-      >
-        💳 View Payments
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-indigo-500 hover:bg-gray-100"
-         onClick={() => { handleDownloadPDF(item); setActionMenu(null); }}
-      >
-        📥 PDF
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-blue-500 hover:bg-gray-100"
-         onClick={() => { handleBluetoothPrint(item); setActionMenu(null); setPrint(item)}}
-      >
-        📄 Print
-      </button>
-      <button
-        className="w-full px-3 py-2 text-left text-red-500 hover:bg-gray-100"
-         onClick={() => { handleDelete(item._id, item.source); setActionMenu(null); }}
-      >
-        🗑️ Delete
-      </button>
-    </div>
-  )}
-</td>
-
-            {/* Total */}
-            <td className="text-sm text-center border-b">
-              {item.totalAmount || "0"}
-            </td>
-
-            {/* Status */}
-            <td
-              className="px-2 py-2 text-sm text-center border-b cursor-pointer"
-              onClick={() => handleEditPaymentType(item)}
-            >
-              <span
-                className={`inline-block px-2 py-1 text-xs font-semibold rounded
-                  ${
-                    item.payments[0]?.paymentType?.paymentTypeName === "Cash"
-                      ? "bg-green-100 text-green-800"
-                      : item.payments[0]?.paymentType?.paymentTypeName === "Bank"
-                      ? "bg-blue-100 text-blue-800"
-                      : item.payments[0]?.paymentType?.paymentTypeName === "Hold"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-              >
-                {item.payments[0]?.paymentType?.paymentTypeName || "N/A"}
-              </span>
-            </td>
-          </tr>
-        ))
-    ) : (
-      <tr>
-        <td
-          colSpan="3"
-          className="px-4 py-4 text-sm text-center text-gray-500"
-        >
-          No Data Available
-        </td>
-      </tr>
-    )}
-  </tbody>
-</table>)
-      
-     })()}
 
 
-     
-     
-
-       {editPaymentModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-              <div className="w-full max-w-md p-6 bg-white rounded-lg">
-                <h2 className="mb-4 text-lg font-semibold">Edit Payment Type</h2>
-                <p className="mb-4 text-sm text-gray-600">
-                  Invoice: {selectedInvoice.saleCode} ({selectedInvoice.source})
-                </p>
-                <label className="block mb-2 font-semibold text-gray-700">
-                  Select Payment Type
-                </label>
-                <Select
-                  options={paymentTypes}
-                  value={newPaymentType}
-                  onChange={setNewPaymentType}
-                  placeholder="Choose payment type"
-                  className="mb-4"
-                />
-                <div className="flex justify-end gap-2">
+  
+ <div className="w-full p-4 mx-auto mt-8 font-sans bg-white rounded-lg shadow-md">
+      <div className="flex flex-col justify-between mb-4 sm:flex-row sm:items-center">
+        <h2 className="mb-2 text-xl font-bold text-gray-800 sm:mb-0">Recent Sales Invoices</h2>
+        <div className="relative flex items-center">
+          <MdOutlineDateRange className="absolute text-gray-500 left-3" />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full py-2 pl-10 pr-3 text-sm transition-colors border border-gray-300 rounded-lg sm:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+        {
+          showModal && <CardOtpModal sa={sa} isOpen={showModal} onClose={() => {fetchSale();setShowModal(false)}}/>
+        }
+      <div className="space-y-4">
+        {filteredSales.length > 0 ? (
+          filteredSales.map((item) => (
+            <div key={item._id} className="p-4 border border-gray-200 rounded-lg shadow-sm bg-gray-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-lg font-semibold text-blue-600">
+                  {item.saleCode}
+                </span>
+                <div className="relative">
                   <button
-                    className="px-4 py-2 text-sm text-gray-600 bg-gray-200 rounded hover:bg-gray-300"
-                    onClick={() => {
-                      setEditPaymentModal(false);
-                      setSelectedInvoice(null);
-                      setNewPaymentType(null);
-                    }}
+                    className="p-1 text-gray-500 rounded-full hover:bg-gray-200"
+                    onClick={() => setActionMenu(actionMenu === item._id ? null : item._id)}
                   >
-                    Cancel
+                    <MdMoreVert size={24} />
                   </button>
-                  <button
-                    className="px-4 py-2 text-sm text-white rounded bg-cyan-500 hover:bg-cyan-600"
-                    onClick={savePaymentType}
-                    disabled={loading}
+                  {actionMenu === item._id && (
+                    <div className="absolute right-0 z-20 w-48 overflow-hidden bg-white border border-gray-200 rounded-lg shadow-xl top-8 animate-fade-in">
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100" onClick={() => handleViewSales(item)}>
+                        📄 View Sales
+                      </button>
+                       <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100" onClick={() =>{
+                        console.log("item",item)
+                        if(item.exclusiveDiscount > 0 || item.premiumCard !== null){
+                          setActionMenu(null)
+                          alert("Exclusive Discount already used  for this invoice.")
+                          return;
+                        }
+                        else{
+                          
+                          setActionMenu(null)
+                          setShowModal(true)
+                          setSa(item)
+                        }
+                       }}>
+                        📄 Apply Card
+                      </button>
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100" onClick={() => handleEdit(item)}>
+                        ✏️ Edit
+                      </button>
+                      <button
+                        className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                        onClick={() => handleEditPaymentType(item)}
+                      >
+                        💵 Edit Payment
+                      </button>
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100" onClick={() => handleViewPayments(item)}>
+                        💳 View Payments
+                      </button>
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100" onClick={() => handleDownloadPDF(item)}>
+                        <MdPictureAsPdf /> PDF
+                      </button>
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"  onClick={() => { handleBluetoothPrint(item); setActionMenu(null)}}>
+                        <MdPrint /> Print
+                      </button>
+                      <button className="flex items-center w-full gap-2 px-4 py-3 text-sm text-red-500 transition-colors hover:bg-red-50" onClick={() => handleDelete(item._id, item.source)}>
+                        <MdDelete /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  
+                  <span className="font-medium text-gray-800">{`Total: ${item.totalAmount}`}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MdPayments className="text-gray-500" />
+                  <span
+                    className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusClasses(getPaymentTypeName(item))}`}
+                    onClick={() => handleEditPaymentType(item)}
                   >
-                    {loading ? "Saving..." : "Save"}
-                  </button>
+                    {getPaymentTypeName(item)}
+                  </span>
                 </div>
               </div>
             </div>
-          )}
-    </div> 
-  </div>
+          ))
+        ) : (
+          <div className="p-6 text-center text-gray-500">
+            No sales data available for this date.
+          </div>
+        )}
+      </div>
 
+      {editPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="w-full max-w-sm p-6 transition-all transform scale-100 bg-white rounded-lg shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-gray-800">Edit Payment Type</h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Invoice: <span className="font-semibold">{selectedInvoice.saleCode}</span>
+            </p>
+            <div className="mb-6">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Select Payment Type
+              </label>
+              <Select
+                options={paymentTypes}
+                value={newPaymentType}
+                onChange={setNewPaymentType}
+                placeholder="Choose a payment type"
+                className="text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-gray-200 rounded-lg hover:bg-gray-300"
+                onClick={() => setEditPaymentModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={savePaymentType}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
 {/* //Metric Show       */} 
 {/* <div className="grid w-full grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
   <MetricCard

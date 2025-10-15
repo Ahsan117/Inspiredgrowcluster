@@ -136,8 +136,10 @@ const Sidebar = ({ isSidebarOpen }) => {
 
   
   const reportsList = [
+    { name: "Particular Item Report", path: "/reports/particular-item" },
     { name: "Profit & Loss Report", path: "/reports/profit-loss" },
     { name: "Sales & Payment Report", path: "/reports/sales-payment" },
+    {name :"Seller Points Report", path:"/reports/seller-points"},
     { name: "Customer Orders", path: "/reports/customer-orders" },
     { name: "GSTR-1 Report", path: "/reports/gstr-1" },
     {name:"Stock Transfer Report",path:"/reports/stock-transfer"},
@@ -146,6 +148,7 @@ const Sidebar = ({ isSidebarOpen }) => {
     {name:"Stock Report",path:"/reports/stock"},
     {name:"Item Compare",path:"/reports/item-compare"},
     {name:"Item Transfer",path:"/reports/item-transfer"},
+    {name:"Premium Card Use Report",path:"/premium-card-report"},
   ];
 
   if (!isSidebarOpen) return null;
@@ -523,13 +526,31 @@ const Sidebar = ({ isSidebarOpen }) => {
               leaveTo="transform opacity-0 -translate-y-2"
             >
               <ul className="pl-4">
-                {hasPermissionFor("posorders", "Add") && (
+                {hasPermissionFor("order", "View") && (
                   <li
                     className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
                     onClick={() => navigate("/order/view")}
                   >
                     <FaCashRegister />
                     <span>Order List</span>
+                  </li>
+                )}
+                 {hasPermissionFor("order", "View") && (
+                  <li
+                    className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
+                    onClick={() => navigate("/order/view/rider-assigned")}
+                  >
+                    <FaCashRegister />
+                    <span>Rider Assigned Order</span>
+                  </li>
+                )}
+                 {hasPermissionFor("order", "View") && (
+                  <li
+                    className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
+                    onClick={() => navigate("/order/view/van-assigned")}
+                  >
+                    <FaCashRegister />
+                    <span>Van Assigned Order</span>
                   </li>
                 )}
               

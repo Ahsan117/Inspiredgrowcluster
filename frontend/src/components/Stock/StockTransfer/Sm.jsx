@@ -480,7 +480,7 @@ const startScanner = async () => {
       return;
     }
 
-    setSelectedItems((prev) => [...prev,newItem]);
+    setSelectedItems((prev) => [newItem,...prev]);
     
   }
 
@@ -542,7 +542,7 @@ const handleAddItemsBatch = (itemsToAdd) => {
         };
 
         if (newItem.salesPrice > 0) {
-          updated.push(newItem);
+          updated.unshift(newItem);
           playSound("/sounds/item-added.mp3");
         }
       }

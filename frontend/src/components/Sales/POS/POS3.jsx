@@ -23,7 +23,7 @@ const Summary = ({ label, value, isGrandTotal = false }) => (
 );
 
 // --- COMPONENT REFACTORED FOR BETTER MOBILE UX ---
-const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateItem, removeItem, setSelectedItem ,totalAmount ,totalDiscount,newNote,newAmount,additionalPaymentAmount,setAdditionalPaymentAmount,setNewNote,setNewAmount}) => (
+const ItemsList = ({editId,exclusiveDiscount, additionalCharges,items,couponCode,setCouponCode, updateItem, removeItem, setSelectedItem ,totalAmount ,totalDiscount,newNote,newAmount,additionalPaymentAmount,setAdditionalPaymentAmount,setNewNote,setNewAmount}) => (
   <section className="overflow-y-auto">
     <div className="divide-y divide-gray-200 ">
       {items.length === 0 ? (
@@ -44,11 +44,10 @@ const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateIte
                 @ ₹{item.salesPrice.toFixed(2)}
               </p>
             </div>
-
             {/* Quantity Stepper & Price */}
             <div className="flex flex-col items-end gap-2">
   <div className="flex items-center bg-gray-100 rounded-lg">
-    <button
+    <button 
       onClick={() => updateItem(idx, 'quantity', Math.max(1, item.quantity - 1))}
       className="px-3 py-1 rounded-l-lg text-cyan-600 hover:bg-gray-200"
       aria-label="Decrease quantity"
@@ -72,7 +71,7 @@ const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateIte
       className="w-12 text-base font-bold text-center bg-white border-none focus:ring-0"
     />
 
-    <button
+    <button 
       onClick={() => updateItem(idx, 'quantity', item.quantity + 1)}
       className="px-3 py-1 rounded-r-lg text-cyan-600 hover:bg-gray-200"
       aria-label="Increase quantity"
@@ -102,6 +101,7 @@ const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateIte
     
           <Summary label="Subtotal" value={`₹${totalAmount.toFixed(2)}`} />
           <Summary label="Discount" value={`- ₹${totalDiscount.toFixed(2)}`} />
+          {editId && <Summary label="Premium Membership Discount" value={`- ₹${exclusiveDiscount.toFixed(2)}`} />}
         {/* Additional Charges Section */}
 <div className="mt-3">
   <label className="block mb-1 text-xs font-medium text-gray-600">
@@ -169,7 +169,7 @@ const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateIte
 </div>
 
           <div className="my-2 border-t border-dashed" />
-          <Summary label="Grand Total" value={`₹${(totalAmount - totalDiscount+additionalCharges).toFixed(2)}`} isGrandTotal={true} />
+          <Summary label="Grand Total" value={`₹${(totalAmount - totalDiscount+additionalCharges - exclusiveDiscount).toFixed(2)}`} isGrandTotal={true} />
 
           <div >
             <label className="block mb-1 text-xs font-medium text-gray-600">Apply Coupon</label>
@@ -188,16 +188,19 @@ const ItemsList = ({ additionalCharges,items,couponCode,setCouponCode, updateIte
 
 // --- COMPONENT REFACTORED FOR BETTER MOBILE UX ---
 const ItemDetailModal = ({ selectedItem, allItems, onClose, onSave,setItems }) => {
-  const item = allItems.find(it => it._id === selectedItem.item);
-  const [salesPrice, setSalesPrice] = useState(item?.salesPrice || 0);
+  
+  console.log(selectedItem)
+  // const item = allItems.find(it => it._id === selectedItem.item);
+  // console.log("aa",item)
+  const [salesPrice, setSalesPrice] = useState( selectedItem.salesPrice || 0);
    console.log(selectedItem)
-  if (!item) return null;
+ 
 
   const handlePriceChange = (e) => setSalesPrice(e.target.value);
 
   const handleSave = async () => {
     try {
-      if(salesPrice<item.purchasePrice){
+      if(salesPrice<selectedItem.purchasePrice){
         alert("SALES PRICE CANNOT BE LESS THAN PURCHASE PRICE");
         return ;
       }
@@ -231,9 +234,9 @@ const ItemDetailModal = ({ selectedItem, allItems, onClose, onSave,setItems }) =
         {/* Image & Name */}
         <div className="flex items-center gap-4">
           <div className="flex items-center justify-center flex-shrink-0 w-20 h-20 bg-gray-100 rounded-xl">
-            {item.image ? (
+            {selectedItem?.image ? (
               <img
-                src={item.image}
+                src={selectedItem.image}
                 alt="item"
                 className="object-cover w-full h-full rounded-xl"
               />
@@ -242,24 +245,24 @@ const ItemDetailModal = ({ selectedItem, allItems, onClose, onSave,setItems }) =
             )}
           </div>
           <div className="flex-1">
-            <p className="text-xl font-bold text-gray-800">{item.itemName}</p>
-            <p className="text-sm text-gray-500">SKU: {item.sku || "N/A"}</p>
+            <p className="text-xl font-bold text-gray-800">{selectedItem.itemName}</p>
+            <p className="text-sm text-gray-500">SKU: {selectedItem.sku || "N/A"}</p>
           </div>
         </div>
 
         {/* Quick Info */}
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <Info label="Category" value={item.category?.name || "N/A"} />
-          <Info label="Brand" value={item.brand?.brandName || "N/A"} />
-          <Info label="Stock" value={item.currentStock || 0} />
-          <Info label="Barcode" value={item.barcode || item.barcodes?.[0] || "N/A"} />
+          <Info label="Category" value={selectedItem.category?.name || "N/A"} />
+          <Info label="Brand" value={selectedItem.brand?.brandName || "N/A"} />
+          <Info label="Stock" value={selectedItem.currentStock || 0} />
+          <Info label="Barcode" value={selectedItem.barcode || selectedItem.barcodes.join(", ") || "N/A"} />
         </div>
 
         {/* Description */}
-        {item.description && (
+        {selectedItem.description && (
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase">Description</p>
-            <p className="mt-1 text-sm text-gray-700">{item.description}</p>
+            <p className="mt-1 text-sm text-gray-700">{selectedItem.description}</p>
           </div>
         )}
 
@@ -297,7 +300,7 @@ const ItemDetailModal = ({ selectedItem, allItems, onClose, onSave,setItems }) =
 
 
 export default function POS3({isSubmitting,additionalCharges,setItems,additionalPaymentAmount,setAdditionalPaymentAmount,setIsSubmitting,
-selectedCustomer, selectedWarehouse, 
+selectedCustomer, selectedWarehouse, exclusiveDiscount,editId,
  allItems,  warehouses, invoiceCode, customers,
   orderPaymentMode, items, updateItem, removeItem, onHold,  onOpenModal,
   totalAmount, totalDiscount, couponCode, setCouponCode, isPaymentModalOpen, setIsPaymentModalOpen,
@@ -308,6 +311,7 @@ selectedCustomer, selectedWarehouse,
   const [selectedItem, setSelectedItem] = useState(null);
  const [newNote, setNewNote] = useState("");
   const [newAmount, setNewAmount] = useState(0);
+  const [card,setCard] =useState(0);
   useEffect(() => {
     const backHandler = App.addListener('backButton', () => setActiveTab('pos2'));
     return () => backHandler.remove();
@@ -317,6 +321,16 @@ selectedCustomer, selectedWarehouse,
     console.log(items)
   }, [items]);
 
+  useEffect(()=>{
+      console.log("selectedItem",items)
+      let total=0;
+      items.forEach(element => {
+          if(!element.offer) return;
+          console.log(element)
+           total += element.quantity * element.salesPrice;
+          });
+          setCard(total * 0.05);    //  0.05 is percentage of card points
+  },[items])
   return (
     // CHANGED: Added pb-32 for padding at the bottom so content isn't hidden by the sticky footer
     <div className="text-gray-900 ">
@@ -340,13 +354,16 @@ selectedCustomer, selectedWarehouse,
         </section>
 
         {/* Items List */}
-        <ItemsList additionalCharges={additionalCharges} items={items} setNewAmount={setNewAmount} setNewNote={setNewNote} newNote={newNote} newAmount={newAmount} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} couponCode={couponCode} setCouponCode={setCouponCode} totalAmount={totalAmount} totalDiscount={totalDiscount} updateItem={updateItem} removeItem={removeItem} setSelectedItem={setSelectedItem} />
+        <ItemsList exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} items={items} setNewAmount={setNewAmount} setNewNote={setNewNote} newNote={newNote} newAmount={newAmount} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} couponCode={couponCode} setCouponCode={setCouponCode} totalAmount={totalAmount} totalDiscount={totalDiscount} updateItem={updateItem} removeItem={removeItem} setSelectedItem={setSelectedItem} />
 
       </main>
 
       {/* --- CHANGED: STICKY FOOTER FOR ACTIONS --- */}
       <footer className="fixed bottom-0 left-0 right-0 z-10 p-3 bg-white border-t border-gray-200">
-          <h6>Grand Total:{`₹${(totalAmount - totalDiscount).toFixed(2)}`}</h6>
+        <div className='flex justify-between gap-6 mb-3 text-lg font-bold text-gray-900'>
+          <span>Grand Total:{`₹${(totalAmount - totalDiscount - exclusiveDiscount+ additionalCharges).toFixed(2)}`}</span>
+          <span>Points:{`₹${card.toFixed(2)}`}</span>
+        </div>
           <div className="grid grid-cols-2 gap-3">
   <button
     onClick={async () => {

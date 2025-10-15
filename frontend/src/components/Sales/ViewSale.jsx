@@ -189,8 +189,8 @@ const ViewSale = () => {
           customer: response.data.customer || {},
           items: detailedItems,
           payments: response.data.payments || [],
-          saleDate: response.data.saleDate && !isNaN(new Date(response.data.saleDate).getTime())
-            ? new Date(response.data.saleDate).toLocaleDateString()
+          saleDate: response.data.createdAt && !isNaN(new Date(response.data.createdAt).getTime())
+            ? new Date(response.data.createdAt).toLocaleDateString()
             : "N/A",
           saleCode: response.data.saleCode || '',
           amount: amount,
