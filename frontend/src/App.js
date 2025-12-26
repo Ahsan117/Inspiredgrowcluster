@@ -46,8 +46,7 @@ const SalesPaymentReport = lazy(() => import("./components/Reports/SalesPaymentR
 const ItemTransfer = lazy(() => import("./components/Reports/ItemTransfer"));
 const StockTransferReport = lazy(() => import("./components/Reports/StockTransfer"));
 const SaleItemsReport = lazy(() => import("./components/Reports/SaleItems"));
-const StockReport = lazy(() => import("./components/Reports/StockReport"));
-const ItemCompare = lazy(() => import("./components/Reports/ItemCompare"));
+
 const CustomerOrders = lazy(() => import("./pages/CustomerOrders"));
 const Supplierlist = lazy(() => import("./components/contact/Supplierlist"));
 const Customerlist = lazy(() => import("./components/contact/Customerlist"));
@@ -186,6 +185,30 @@ const ParticularItemReport=lazy(()=>import("./components/Reports/ParticularItemS
 const RiderAssignedOrder=lazy(()=>import("./components/Order/OrderList/RiderAssignedOrder.jsx"))
 const VanAssignedOrder=lazy(()=>import("./components/Order/OrderList/VanAssignedOrder.jsx"))
 const POSForOrder=lazy(()=>import ("./components/Order/POSForOrder/POSM.jsx"))
+const ReportsList=lazy(()=>import("./components/Reports/ReportsList.jsx"))
+const LastOtpView=lazy(()=>import ("./components/card/LastOtpView"))
+const PurchaseDetail=lazy(()=>import("./components/purchase/PurchaseDetail.jsx"))
+const PurchaseReturnDetail=lazy(()=>import("./components/purchase/PurchaseReturnDetail.jsx"))
+//new reports
+const StockReport = lazy(() => import("./components/Reports/newreport/StockReport"));
+const SalesReport=lazy(()=>import("./components/Reports/newreport/SalesReport.jsx"))
+const SalesReturnReport=lazy(()=>import("./components/Reports/newreport/SalesReturnReport.jsx"))
+const PurchaseReport=lazy(()=>import("./components/Reports/newreport/PurchaseReport.jsx"))
+const PurchaseReturnReport=lazy(()=>import("./components/Reports/newreport/PurchaseReturnReport.jsx"))
+const BillWiseProfitReport=lazy(()=>import("./components/Reports/newreport/BillWiseProfit.jsx"))
+const ItemWiseProfitReport=lazy(()=>import("./components/Reports/newreport/ItemWiseProfit.jsx"))
+const NewStockTransferReport=lazy(()=>import("./components/Reports/newreport/StockTransferReport.jsx"))
+const CustomerSaleReport=lazy(()=>import ("./components/Reports/newreport/CustomerSaleReport.jsx"))
+const NewSaleItemsReport = lazy(()=> import ("./components/Reports/newreport/NewSaleItems.jsx"))
+const ItemStockHistoryReport = lazy(()=>import("./components/Reports/newreport/ItemStockHistory/ItemStockHistory.jsx"))
+const ItemCompare = lazy(() => import("./components/Reports/newreport/stockComparison/ItemCompare.jsx"));
+const CustomerReport =lazy(()=>import("./components/Reports/newreport/CustomerReport.jsx"))
+const SellerPointReport =lazy(()=>import("./components/Reports/newreport/SellerPointReport.jsx"))
+
+
+const AdminBookingPanel         = lazy(() => import("./components/Booking/VanBookingPanel"));
+const RiderClaimPanel           = lazy(() => import("./components/Booking/RiderClaimPanel"));
+const MyJobsPanel               = lazy(() => import("./components/Booking/MyJobsPanel"));
 function App() {
 
 
@@ -350,6 +373,28 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <BackButtonHandler />
          <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
       <Routes>
+      <Route path="/van/bookings"            element={<AdminBookingPanel />} />
+          <Route path="/rider/claim"             element={<RiderClaimPanel />} />
+          <Route path="/my-jobs"                 element={<MyJobsPanel />} />
+        {/* new reports */}
+        <Route path="/reports/sales-report" element={<SalesReport />} />
+        <Route path="/reports/sales-return" element={<SalesReturnReport />} />
+        <Route path="/reports/purchase-report" element={<PurchaseReport />} />
+        <Route path="/reports/purchase-return" element={<PurchaseReturnReport />} />
+        <Route path="/reports/bill-wise-report" element={<BillWiseProfitReport />} />
+        <Route path="/reports/item-wise-profit-report" element={<ItemWiseProfitReport />} />
+        <Route path="/reports/stock-transfer-report" element={<NewStockTransferReport />} />
+        <Route path="/reports/customer-sale-report" element={<CustomerSaleReport />} />
+        <Route path="/reports/sale-items-report" element={<NewSaleItemsReport  />} />
+        <Route path="/reports/items-stock-history-report" element={<ItemStockHistoryReport  />} />
+        <Route path="/reports/stock" element={<StockReport />} />
+        <Route path="/reports/item-compare" element={<ItemCompare />} />
+        <Route path="/reports/customer" element={<CustomerReport />} />
+        <Route path="/reports/seller-point" element={<SellerPointReport />} />
+
+
+
+
         <Route path="/add-items-offer" element={<AddItemsOffer />} />
               <Route path="/sale-location" element={<SaleLocation />} />
          <Route path="/account-list1" element={<AccountList1 />} />
@@ -358,6 +403,7 @@ StatusBar.setOverlaysWebView({ overlay: false });
           <Route  path="/card-table" element={<CardTable />} />
           <Route  path="/all-items-view" element={<AllItemsView />} />
           <Route  path="/card-setting" element={<CardSetting />} />
+          <Route  path="/latest-otp" element={<LastOtpView />} />
           <Route path="/print" element={<Print />} />
         <Route path="/printer-settings" element={<PrinterSettings />} />
           {/* POSM */}
@@ -429,8 +475,6 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/reports/sale-item" element={<SaleItemsReport />} />
         <Route path="/reports/club-bill" element={<ClubBillReport />} />
         <Route path="/reports/seller-points" element={<SellerPoints />} />
-        <Route path="/reports/stock" element={<StockReport />} />
-        <Route path="/reports/item-compare" element={<ItemCompare />} />
         <Route path="/reports/item-transfer" element={<ItemTransfer />} />
         <Route path="/reports/particular-item" element={<ParticularItemReport />} />
         <Route path="/add-advance" element={<AddAdvance />} />
@@ -531,6 +575,11 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/category/image-management" element={<CategoryImageManagement />} />
         <Route path="/subcategory/image-management" element={<SubCategoryImageManagement />} />
         <Route path="/subsubcategory/image-management" element={<SubSubCategoryImageManagement />} />
+        <Route path="/reports-list" element={<ReportsList />} />
+        <Route path="/purchase-return-detail/:id" element={<PurchaseReturnDetail />} />
+        <Route path="/purchase-detail/:id" element={<PurchaseDetail />} />
+      
+      
       </Routes>
       </Suspense>
     </Router>

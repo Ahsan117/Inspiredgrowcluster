@@ -428,12 +428,12 @@ console.log(8)
                 <td class="r">${(r.quantity * r.salesPrice).toFixed(2)}</td>
             </tr>`
         ).join("");
-  console.log(12)
+
   
         const payRows = payments.map((p, i) => `
             <tr><td>${i + 1}</td><td>${p.paymentNote || "-"}</td><td class="r">${p.amount.toFixed(2)}</td></tr>`
         ).join("");
-        console.log(13)
+     
         
         const generatedHtml = `
             <div id="receipt-content">

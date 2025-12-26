@@ -29,7 +29,7 @@ const storeToken = async (name,token) => {
 };
 
 const UserLogin = () => {
-  const [user, setUser] = useState({ username: "", password: "" });
+  const [use, setUser] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -89,7 +89,7 @@ const UserLogin = () => {
 }, []);
 
   const handleChange = (e) => {
-    setUser({ ...user, [e.target.name]: e.target.value });
+    setUser({ ...use, [e.target.name]: e.target.value });
   };
 
 
@@ -103,12 +103,12 @@ const UserLogin = () => {
       const res = await axios.post(
          "https://pos.inspiredgrow.in/vps/admiaddinguser/userloginByUserName",
         {
-          username:user.username,
-          password:user.password
+          username:use.username,
+          password:use.password
         }
       );
-      console.log(res.data)
-      const { token, user: userInfo, permissions } = res.data;
+      console.log("data:",res.data)
+      const { token, user , permissions } = res.data;
       
 //        if (rememberMe) {
 //         alert("Saving user credentials for future logins");
@@ -147,25 +147,25 @@ const UserLogin = () => {
      // 2) Decode token to pull out id, role id, and stores[]
      const decoded = JSON.parse(window.atob(token.split(".")[1]));
      
-      localStorage.setItem("role", decoded.role.toLowerCase());
-      localStorage.setItem("userId", decoded.id);
-      localStorage.setItem("roleId", decoded.role);
-      localStorage.setItem("stores", JSON.stringify(decoded.stores || []));
+      localStorage.setItem("role", user.Role.roleName.toLowerCase());
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("roleId", user.Role._id);
+      localStorage.setItem("stores", JSON.stringify(user.stores || []));
       // If exactly one store, save a convenience storeId
-      if (decoded.stores?.length === 1) {
-        localStorage.setItem("storeId", decoded.stores[0]);
-        await storeToken("storeId", decoded.stores[0])
-      }
+      // if (deores?.length === 1) {
+        localStorage.setItem("storeId", user.stores[0] ||  "");
+        await storeToken("storeId", user.stores[0] || "")
+      // }
 
       // // 3) Save permissions array
       localStorage.setItem("permissions", JSON.stringify(permissions || []));
       await storeToken("permissions", JSON.stringify(permissions || []))
 
       // store for long login
-      await storeToken("role", decoded.role.toLowerCase());
-      await storeToken("userId", decoded.id)
-      await storeToken("roleId", decoded.role)
-      await storeToken("stores", JSON.stringify(decoded.stores || []))
+      await storeToken("role", user.Role.roleName.toLowerCase());
+      await storeToken("userId", user.id)
+      await storeToken("roleId", user.Role._id)
+      await storeToken("stores", JSON.stringify(user.stores || []))
       alert("User logged in successfully!");
       
       navigate("/dashboard");
@@ -205,7 +205,7 @@ const UserLogin = () => {
               type="text"
               name="username"
               placeholder="Username"
-              value={user.username}
+              value={use.username}
               onChange={handleChange}
               required
               className="w-full py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -217,7 +217,7 @@ const UserLogin = () => {
               type="password"
               name="password"
               placeholder="Password"
-              value={user.password}
+              value={use.password}
               onChange={handleChange}
               required
               className="w-full py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"

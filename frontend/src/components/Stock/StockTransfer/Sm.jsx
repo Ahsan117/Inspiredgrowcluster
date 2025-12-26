@@ -407,20 +407,20 @@ const startScanner = async () => {
 
   // ─── ADD ITEM TO SELECTED LIST ────────────────────────────────────────
   const handleAddItem = (it) => {
-  console.log(it)
+  console.log("kjh",it)
   if (!it || !it.parentId) {
     console.error("Invalid item, missing parentId:", it);
     return;
   }
   
-  const parentExists = allItems.some((ai) => ai._id === it.parentId && !ai.variantId);
+  const parentExists = allItems.some((ai) => ai._id === it._id && !ai.variantId);
   if (!parentExists && !it.variantId) {
     console.error(`Parent item not found for parentId: ${it.parentId}`, it);
     return;
   }
 
   if (it.variantId) {
-    const variantValid = allItems.some((ai) => ai._id === it.variantId && ai.parentId === it.parentId);
+    const variantValid = allItems.some((ai) => ai._id === it._id && ai.variantId === it.variantId);
     if (!variantValid) {
       console.error(`Invalid variantId: ${it.variantId} for parentId: ${it.parentId}`, it);
       return;
@@ -430,7 +430,7 @@ const startScanner = async () => {
   const quantityToAdd = it.quantity || 1;
 
   const existingIdx = selectedItems.findIndex(
-    (r) => r.item === it.parentId && r.variant === (it.variantId || null)
+    (r) => r.item === it._id && r.variant === (it.variantId || null)
   );
 
   if (existingIdx !== -1) {
@@ -458,7 +458,7 @@ const startScanner = async () => {
     // New item → add it to the list
     const newItem = {
       stock:it.openingStock || 0,
-      item: it.parentId,
+      item: it._id,
       variant: it.variantId || null,
       itemName: it.itemName || "NA",
       itemCode: it.itemCode || "",
@@ -496,16 +496,16 @@ const handleAddItemsBatch = (itemsToAdd) => {
     itemsToAdd.forEach((it) => {
       if (!it || !it.parentId) return;
 
-      const parentExists = allItems.some((ai) => ai._id === it.parentId && !ai.variantId);
+      const parentExists = allItems.some((ai) => ai._id === it._id && !ai.variantId);
       if (!parentExists && !it.variantId) return;
 
       if (it.variantId) {
-        const variantValid = allItems.some((ai) => ai._id === it.variantId && ai.parentId === it.parentId);
+        const variantValid = allItems.some((ai) => ai._id === it._id && ai.variantId === it.variantId);
         if (!variantValid) return;
       }
 
       const quantityToAdd = it.quantity || 1;
-      const idx = updated.findIndex((r) => r.item === it.parentId && r.variant === (it.variantId || null));
+      const idx = updated.findIndex((r) => r.item === it._id && r.variant === (it.variantId || null));
 
       if (idx !== -1) {
         const existing = updated[idx];
@@ -524,7 +524,7 @@ const handleAddItemsBatch = (itemsToAdd) => {
       } else {
         const newItem = {
           stock: it.openingStock || 0,
-          item: it.parentId,
+          item: it._id,
           variant: it.variantId || null,
           itemName: it.itemName || "NA",
           itemCode: it.itemCode || "",

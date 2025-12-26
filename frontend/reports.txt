@@ -4,18 +4,23 @@ Here's the full list of 75 reports (your original 50 + 25 additional ones) in a 
 
 | #  | Report Name                      | Description                                                                 | Key Sources                          | Feasibility |
 |----|----------------------------------|-----------------------------------------------------------------------------|--------------------------------------|-------------|
-| 1  | Stock Report                     | Current stock levels by item/warehouse, with totals.                        | inventories.json, items.json         | High       |
-| 2  | Sales Report                     | Daily/monthly sales totals, revenue, units sold by warehouse.               | orders.json, ledgers.json            | High       |
-| 3  | Purchase Report                  | Inbound purchases, costs by vendor/item.                                    | deposits.json, items.json            | Medium     |
-| 4  | Purchase Return Report           | Returned purchases, reasons, value impact.                                  | ledgers.json (negatives)             | Medium     |
-| 5  | Sales Return                     | Returned sales qty/value, by item/customer.                                 | orders.json, ledgers.json            | Medium     |
-| 6  | Bill Wise Profit                 | Profit margins per order/bill.                                              | orders.json, items.json              | Medium     |
-| 7  | Item Wise Profit Report          | Profit per item, including margins and totals.                              | orders.json, items.json              | High       |
-| 8  | Stock Transfer Report            | Transfers between warehouses, amounts/qty.                                  | moneytransfers.json, ledgers.json    | High       |
-| 9  | Sale Item Report                 | Sold items details: qty, value, top sellers.                                | orders.json, items.json              | High       |
+| 1  | Stock Report            a         | Current stock levels by item/warehouse, with totals.                        | inventories.json, items.json         | High       |
+| 2  | Sales Report             a        | Daily/monthly sales totals, revenue, units sold by warehouse.               | orders.json, ledgers.json            | High       |
+| 3  | Purchase Report            a      | Inbound purchases, costs by vendor/item.                                    | deposits.json, items.json            | Medium     |
+| 4  | Purchase Return Report       a    | Returned purchases, reasons, value impact.                                  | ledgers.json (negatives)             | Medium     |
+| 5  | Sales Return                 a    | Returned sales qty/value, by item/customer.                                 | orders.json, ledgers.json            | Medium     |
+| 6  | Bill Wise Profit               a  | Profit margins per order/bill.                                              | orders.json, items.json              | Medium     |
+| 7  | Item Wise Profit Report        a  | Profit per item, including margins and totals.                              | orders.json, items.json              | High       |
+| 8  | Stock Transfer Report           a | Transfers between warehouses, amounts/qty.                                  | moneytransfers.json, ledgers.json    | High       | 9 
+| | Sale Item Report                 | Sold items details: qty, value, top sellers.                                | orders.json, items.json              | High       |
 | 10 | Item Stock (Date-Wise Report)    | Stock levels tracked over time per item.                                    | inventories.json, ledgers.json       | High       |
-| 11 | Stock Comparison Report          | Compare stock across warehouses/periods.                                    | inventories.json                     | High       |
 | 12 | Customer Report                  | Customer profiles, spends, balances.                                        | customers.json, customerdatas.json   | High       |
+
+uncomplete
+| 11 | Stock Comparison Report          | Compare stock across warehouses/periods.                                    | inventories.json                     | High       |
+
+
+pending
 | 13 | Seller Point Report              | Points earned/redeemed by sellers/customers.                                | customers.json, orders.json          | Medium     |
 | 14 | Club Bill                        | Grouped bills for clubs/members.                                            | orders.json, customers.json          | Medium     |
 | 15 | All Transactions                 | Master log of all financial movements.                                      | ledgers.json, cashtransactions.json  | High       |

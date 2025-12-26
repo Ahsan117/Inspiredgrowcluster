@@ -1,14 +1,14 @@
 import React ,{useState,useEffect,useRef, useMemo
 }from 'react'
-import Sidebar from '../Sidebar';
-import Navbar from '../Navbar';
+import Sidebar from '../../../Sidebar';
+import Navbar from '../../../Navbar';
 import { Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { FaTachometerAlt } from 'react-icons/fa';
 import { CameraIcon } from "@heroicons/react/solid";
 import Select from 'react-select'
 import { FaBars } from "react-icons/fa";
 import axios from 'axios';
-import LoadingScreen from '../../Loading';
+import LoadingScreen from '../../../../Loading';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -167,7 +167,7 @@ const fetchItems = async (warehouseId) => {
     
     // Add Warehouse 1 data
     f1.forEach((item, index) => {
-      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.openingStock]], { origin: -1 });
+      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.currentStock]], { origin: -1 });
     });
     
     // Add empty row
@@ -179,7 +179,7 @@ const fetchItems = async (warehouseId) => {
     
     // Add Warehouse 2 data
     f2.forEach((item, index) => {
-      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.openingStock]], { origin: -1 });
+      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.currentStock]], { origin: -1 });
     });
     
     // Add empty row
@@ -191,7 +191,7 @@ const fetchItems = async (warehouseId) => {
     
     // Add Unique Items data
     resultItems.forEach((item, index) => {
-      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.warehouse?.warehouseName, item.openingStock]], { origin: -1 });
+      XLSX.utils.sheet_add_aoa(ws, [[index + 1, item.itemName, item.warehouse?.warehouseName, item.currentStock]], { origin: -1 });
     });
     
     // Add worksheet to workbook
@@ -220,7 +220,7 @@ const exportToPDF = () => {
   autoTable(doc,{
     startY: yPos,
     head: [['#', 'Item Name', 'Quantity']],
-    body: f1.map((item, index) => [index + 1, item.itemName, item.openingStock]),
+    body: f1.map((item, index) => [index + 1, item.itemName, item.currentStock]),
     margin: { top: 10 },
     styles: { fontSize: 10 }
   });
@@ -234,7 +234,7 @@ const exportToPDF = () => {
   autoTable(doc,{
     startY: yPos,
     head: [['#', 'Item Name', 'Quantity']],
-    body: f2.map((item, index) => [index + 1, item.itemName, item.openingStock]),
+    body: f2.map((item, index) => [index + 1, item.itemName, item.currentStock]),
     margin: { top: 10 },
     styles: { fontSize: 10 }
   });
@@ -252,7 +252,7 @@ const exportToPDF = () => {
       index + 1, 
       item.itemName, 
       item.warehouse?.warehouseName || '', 
-      item.openingStock
+      item.currentStock
     ]),
     margin: { top: 10 },
     styles: { fontSize: 10 }

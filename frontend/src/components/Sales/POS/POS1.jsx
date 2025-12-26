@@ -86,7 +86,7 @@ export default function POS1({
         <option value="">Select Customer</option>
         {customers.map((c) => (
           <option key={c._id} value={c._id}>
-            {c.customerName}
+            {c.customerName || c.name}
           </option>
         ))}
       </select>

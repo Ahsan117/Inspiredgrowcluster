@@ -22,9 +22,31 @@ const ChangeStatusModal = ({ orderId, currentStatus, onClose, fetchOrders }) => 
   const updateStatus = async () => {
     try {
       const token = localStorage.getItem("token");
+      const {data} =await axios.get(`https://pos.inspiredgrow.in/vps/api/pos/invoice-code`, {
+        headers:{
+          Authorization:`Bearer ${localStorage.getItem("token")}`
+        }
+      });
+      
+      const year = new Date().getFullYear();
+      let nextCode;
+      
+      if (data) {
+        // data = "SL/2025/00019240"
+        const parts = data.split("/");  // ["SL", "2025", "00019240"]
+        const seq = parseInt(parts[2], 10); 
+        const padded = String(seq + 1).padStart(7, "0");
+        nextCode = `SL/${year}/${padded}`;
+      } else {
+        // First invoice of the year
+        nextCode = `SL/${year}/0000001`;
+      }
+
+
+      
       await axios.put(
         `https://pos.inspiredgrow.in/vps/api/orders/update-status/${orderId}`,
-        { status },
+        { status,nextCode,fromPos:false },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchOrders(); // refresh order list

@@ -37,7 +37,7 @@ const handleQuantity = (e, id, type) => {
   let updatedItems;
 
   if (type === "delete") {
-    updatedItems = formData.items.filter(it => it.item !== id);
+    updatedItems = formData.items.filter(it => it._id !== id);
   } 
   
   else if (type === "change") {
@@ -55,7 +55,7 @@ const handleQuantity = (e, id, type) => {
   
   else {
     updatedItems = formData.items.map(item => {
-      if (item.item === id) {
+      if (item._id === id) {
         if (type === "plus") {
           
             return { ...item, quantity: item.quantity + 1 };
@@ -256,7 +256,7 @@ const ItemsList = ({ items, updateItem, removeItem, setSelectedItem, setEdit, se
                             </p>
                             <div className="flex items-center gap-1">
                                 <div className="flex items-center bg-gray-100 rounded-full">
-                                    <button type="button" onClick={(e) => updateItem(e, item.item, 'minus')} className="p-2 text-gray-600">
+                                    <button type="button" onClick={(e) => updateItem(e, item._id, 'minus')} className="p-2 text-gray-600">
                                         <FaMinus size={12} />
                                     </button>
                                     <input type="number" value={item.quantity}           onFocus={(e) => {
@@ -265,7 +265,7 @@ const ItemsList = ({ items, updateItem, removeItem, setSelectedItem, setEdit, se
       Keyboard.show(); // explicitly show the keyboard
     }, 100); // short delay helps trigger keyboard on some Androids
   }} onChange={(e) => updateItem(e, item.item, 'change')} className="w-10 text-base font-bold text-center bg-transparent border-none focus:ring-0" />
-                                    <button type="button" onClick={(e) => updateItem(e, item.item, 'plus')} className="p-2 text-gray-600">
+                                    <button type="button" onClick={(e) => updateItem(e, item._id, 'plus')} className="p-2 text-gray-600">
                                         <FaPlus size={12} />
                                     </button>
                                 </div>

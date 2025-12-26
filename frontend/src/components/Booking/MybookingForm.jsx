@@ -6,7 +6,6 @@ import Navbar from '../Navbar';
 import Sidebar from '../Sidebar';
 
 const MybookingForm = () => {
-  const link="https://pos.inspiredgrow.in/vps"
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -41,7 +40,7 @@ const MybookingForm = () => {
   const fetchItems = async () => {
     try {
       const res = await axios.get(
-        `${link}/api/items`
+        'https://pos.inspiredgrow.in/vps/api/items'
       );
       setItems(res.data);
     } catch (err) {
@@ -53,7 +52,7 @@ const MybookingForm = () => {
   const fetchCustomers = async () => {
     try {
       const res = await axios.get(
-        `${link}/api/customer-data/all`
+        'https://pos.inspiredgrow.in/vps/api/customer-data/all'
       );
       setCustomers(res.data);
     } catch (err) {
@@ -91,7 +90,7 @@ const MybookingForm = () => {
         remark: formData.remark
       };
       const res = await axios.post(
-        `${link}/api/booking-orders`,
+        'https://pos.inspiredgrow.in/vps/api/booking-orders',
         payload
       );
       toast.success(

@@ -53,9 +53,9 @@ const ClubReportPage = () => {
     const [previewItem,setPreviewItem]=useState(null);
     // Filter States
     const [options, setOptions] = useState({ warehouses: [], categories: [], items: [] });
-    const [selectedWarehouse, setSelectedWarehouse] = useState("all");
+    const [selectedWarehouse, setSelectedWarehouse] = useState([]);
     const[selectedWarehouseName,setSelectedWarehouseName]=useState("All");
-    const [category, setCategory] = useState("all");
+    const [category, setCategory] = useState([]);
     // const [searchItem, setSearchItem] = useState("all");
     const [searchItemName, setSearchItemName] = useState("");
     const [dateFrom, setDateFrom] = useState("");
@@ -95,7 +95,7 @@ function generateFlatReport({ sales = [], saleReturns = [], stockTransfers = [] 
   sales.forEach(sale => {
     if (!sale.warehouse?._id) return;
     
-    const day = sale.createdAt?.substring(0, 10);
+    const day = sale.saleDate?.substring(0, 10);
     const warehouseId = sale.warehouse._id;
 
     for (const lineItem of sale.items) {
@@ -105,6 +105,7 @@ function generateFlatReport({ sales = [], saleReturns = [], stockTransfers = [] 
 
         if (!tempReport[key]) {
           const details = itemDetailsMap.get(itemId) || {};
+          
           tempReport[key] = {
             warehouseId,
             warehouseName: warehouseMap.get(warehouseId) || 'Unknown Warehouse',
@@ -120,6 +121,7 @@ function generateFlatReport({ sales = [], saleReturns = [], stockTransfers = [] 
             itemImages: details.itemImages || [],
             sale: 0, saleReturn: 0, stockTransferIn: 0, stockTransferOut: 0
           };
+          
         }
         tempReport[key].sale += lineItem.quantity;
       }
@@ -175,12 +177,10 @@ const fetchInitialData = async () => {
                 const token = localStorage.getItem("token");
                 const headers = { Authorization: `Bearer ${token}` };
 
-                const [warehousesRes, categoriesRes,  salesRes,stockRes,salesReturnRes] = await Promise.all([
+                const [warehousesRes, categoriesRes] = await Promise.all([
                     axios.get(`${link}/api/warehouses?scope=mine`, { headers }),
                     axios.get(`${link}/api/categories`, { headers }),
-                    axios.get(`${link}/api/pos/club`, { headers }),
-                    axios.get(`${link}/api/stock-transfers`, { headers }),
-                    axios.get(`${link}/api/sales-return`, { headers }),
+                    
                     // axios.get(`${link}/api/items`, { headers })
                 ]);
                 // setAllItems(itemRes.data.data);
@@ -188,13 +188,11 @@ const fetchInitialData = async () => {
                 const categories = categoriesRes.data.data.map(c => ({ label: c.name, value: c._id }));
                
                 setOptions({
-                    warehouses: [{ label: "All", value: "all" }, ...warehouses],
-                    categories: [{ label: "All", value: "all" }, ...categories],
+                    warehouses: [ ...warehouses],
+                    categories: [ ...categories],
                     
                 });
-                 setStock(stockRes.data.data);
-                setSales(salesRes.data.data);
-                setReturns(salesReturnRes.data.returns);
+                
                 
               
             } catch (err) {
@@ -218,18 +216,25 @@ const fetchInitialData = async () => {
           sales.forEach(sale => {
                 sale.items.forEach(lineItem => {
                   if(lineItem.item===null) return;
+                 let a=null;
+                  if(lineItem.variant){
+                     a= lineItem.item.variants.find(i=>i._id==lineItem.variant)
+                   }
                     if (lineItem.item && !itemDetailsMap.has(lineItem.item._id)) {
                         itemDetailsMap.set(lineItem.item._id, {
                           itemCode: lineItem.item.itemCode,
-                            itemName: lineItem.item.itemName,
-                            mrp: lineItem.item.mrp || 0,
+                            itemName: `${lineItem.item.itemName} ${a?a.name:""}`,
+                            mrp: a?a.mrp:lineItem.item.mrp,
                             categoryId: lineItem.item.category?._id,
                             categoryName: lineItem.item.category?.name,
-                            salesPrice: lineItem.item.salesPrice,
+                            salesPrice:a?a.salesPrice: lineItem.item.salesPrice,
                             barcodes: lineItem.item.barcodes || [],
                             itemImages: lineItem.item.itemImages || []
                         });
                     }
+
+
+                    
                 });
             });
 
@@ -247,27 +252,29 @@ const fetchInitialData = async () => {
              
             setReport(flatReport);
             const catItem={};
-            
+            const catmap = category.map(i => i.label);
+
             flatReport.forEach(item => {
+              if (catmap.length > 0 && !catmap.includes(item.categoryName)) return;
+            
               if (!catItem[item.categoryName]) {
                 catItem[item.categoryName] = [];
               }
               catItem[item.categoryName].push(item);
             });
             
+            
+            console.log("l",catmap)
              console.log("Categorized Items:", catItem);
              
             setFinalReport(catItem);
-            
-           if(selectedWarehouse !=="all" || category !== "all" || (dateFrom && dateTo)) {
-               applyfilter();
-           }
+           
            
     },[options, sales, returns,stock]);
 
             
 
-   const applyfilter = () => {
+   const a = () => {
   const filterreport = report.filter((transfer) => {
     // console.log("Filtering Transfer:", transfer);
     const warehouseMatch = selectedWarehouse === "all" || transfer.warehouseId === selectedWarehouse;
@@ -283,6 +290,7 @@ const fetchInitialData = async () => {
 
     return warehouseMatch && categoryMatch && dateInRange;
   });
+  
 const catItem={};
   filterreport.forEach(item => {
               if (!catItem[item.categoryName]) {
@@ -290,8 +298,58 @@ const catItem={};
               }
               catItem[item.categoryName].push(item);
             });
+            console.log("n",catItem)
   setFinalReport(catItem);
 };
+
+
+
+const applyfilter = async ()=>{
+  setLoading(true);
+  try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const params = {
+        start: dateFrom || null,
+        end: dateTo || null,
+      };
+      
+      if (selectedWarehouse.length > 0) {
+        params.warehouseId = selectedWarehouse.map(i => i.value);
+      }
+      else {
+        params.warehouseId = options.warehouses.map(i => i.value);
+      }
+      
+      const config = { 
+        headers: { Authorization: `Bearer ${token}` },
+        params
+      };
+      
+      const [salesRes, stockRes, salesReturnRes] = await Promise.all([
+        axios.get(`${link}/api/reports/sales-report`, config),
+        axios.get(`${link}/api/reports/stock-transfer-report`, config),
+        axios.get(`${link}/api/reports/sales-return-report`, config),
+      ]);
+      
+    console.log(salesRes)
+    console.log(stockRes)
+    console.log(salesReturnRes)
+
+      
+      setStock(stockRes.data);
+      setSales(salesRes.data);
+      setReturns(salesReturnRes.data);
+      
+    
+  } catch (err) {
+      console.error("Failed to fetch initial data:", err);
+  } finally {
+      setLoading(false);
+  }
+}
+
 
               // Export to PDF function
              
@@ -376,11 +434,11 @@ const downloadAsPDF = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <label className="block mb-1 text-sm font-medium text-gray-600">Warehouse</label>
-                    <Select className='w-full' options={options.warehouses} onChange={(option) => {setSelectedWarehouse(option.value);setSelectedWarehouseName(option.label)}} value={options.warehouses.find(option => option.value === selectedWarehouse)} />
+                    <Select className='w-full' options={options.warehouses} isMulti value={selectedWarehouse} onChange={setSelectedWarehouse} />
                 </div>
                 <div>
                     <label className="block mb-1 text-sm font-medium text-gray-600">Category</label>
-                    <Select className='w-full' options={options.categories} onChange={(option) => setCategory(option.value)} value={options.categories.find(option => option.value === category) || null} />
+                    <Select className='w-full' options={options.categories} onChange={setCategory} value={category} isMulti/>
                 </div>
                 <div>
                     <label className="block mb-1 text-sm font-medium text-gray-600">From Date</label>
@@ -396,7 +454,7 @@ const downloadAsPDF = () => {
             <div className="flex justify-end mt-6">
               
                 <button 
-                    onClick={() => { /* Add your filter logic here */ applyfilter() }} 
+                    onClick={() =>  applyfilter() } 
                     className="px-5 py-2 font-semibold text-white transition-colors duration-200 rounded-md bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
                 >
                     Apply Filter

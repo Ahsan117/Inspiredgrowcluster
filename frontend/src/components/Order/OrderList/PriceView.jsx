@@ -1,228 +1,677 @@
 
-import React, { useRef } from 'react';
-import { Modal, Card, Table, Divider, Tag, Descriptions, Button } from 'antd';
+import React, { useRef,useState } from "react";
+import { Modal, Button, Tag, Divider, message } from "antd";
 import {
   ShoppingCartOutlined,
-  DollarOutlined,
-  PercentageOutlined,
-  FilePdfOutlined,
+  EditOutlined,
   PrinterOutlined,
-  ShareAltOutlined,
-  CloseOutlined
-} from '@ant-design/icons';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import axios from 'axios';
-import { useEffect, useState } from 'react';
-const PriceBreakdownModal = ({ visible, onClose, order }) => {
-   const[address, setAddress] = useState({});
+  CloseOutlined,
+} from "@ant-design/icons";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useNavigate } from "react-router-dom";
+import BluetoothDevicesPage from '../../../pages/BluetoothDevicesPage.jsx'; 
+import Print from "./Print.jsx" 
+import { Capacitor } from "@capacitor/core";
 
+
+export default function PriceBreakdownModal({ visible, onClose, order, onEdit }) {
   const contentRef = useRef();
-
+  const [device, setDevice] = useState(false);
+  const navigate=useNavigate()
+  const [loading,setLoading]=useState(false)
+  const [print,setPrint]=useState(null)
   if (!order) return null;
-  console.log('Order data:', order);
-  const calculateBreakdown = () => {
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let itemDetails = [];
-
-    order.items.forEach(item => {
+  // ✅ Calculate Totals
+  const breakdown = (() => {
+    let subtotal = 0,
+      totalDiscount = 0,
+      totalTax = 0;
+    order.items.forEach((item) => {
       const itemSubtotal = item.salesPrice * item.quantity;
-      const itemDiscount = item.discount || 0;
       subtotal += itemSubtotal;
-      totalDiscount += itemDiscount;
-
-      const itemTax = ((itemSubtotal - itemDiscount) * ((order.tax || 0) / 100));
-      itemDetails.push({
-        ...item,
-        itemTotal: itemSubtotal,
-        itemTax,
-        finalPrice: itemSubtotal - itemDiscount + itemTax,
-      });
+      totalDiscount += item.discount || 0;
+      totalTax += ((itemSubtotal - (item.discount || 0)) * (order.tax || 0)) / 100;
     });
-
-    const totalTax = itemDetails.reduce((sum, item) => sum + item.itemTax, 0);
     const grandTotal = subtotal - totalDiscount + totalTax + (order.shippingFee || 0);
+    return { subtotal, totalDiscount, totalTax, grandTotal };
+  })();
 
-    return {
-      itemDetails,
-      subtotal,
-      totalTax,
-      totalDiscount,
-      grandTotal,
-    };
-  };
-
-  const breakdown = calculateBreakdown();
-
-  const columns = [
-    {
-      title: 'Item',
-      dataIndex: ['item', 'name'],
-      key: 'itemName',
-      render: (_, record) => (
-        <div>{record.item?.itemName || 'Unnamed Item'}</div>
-      ),
-    },
-    {
-      title: 'Unit Price',
-      dataIndex: 'price',
-      key: 'price',
-      align: 'right',
-      render:  (_,record) => `${record.item.salesPrice?.toFixed(2)}`,
-    },
-    {
-      title: 'Qty',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      align: 'center',
-    },
-    {
-      title: 'Discount',
-      dataIndex: 'discount',
-      key: 'discount',
-      align: 'right',
-      render: discount => discount > 0 ? (
-        <Tag color="orange">-{discount.toFixed(2)}</Tag>
-      ) : '0',
-    },
-    {
-      title: 'Tax',
-      dataIndex: 'itemTax',
-      key: 'tax',
-      align: 'right',
-      render: tax => `${tax.toFixed(2)}`,
-    },
-    {
-      title: 'Total',
-      dataIndex: 'finalPrice',
-      key: 'total',
-      align: 'right',
-      render: total => <span className="font-medium">{total.toFixed(2)}</span>,
-    },
-  ];
-
+  // ✅ Print
   const handlePrint = () => {
     const content = contentRef.current;
-    const printWindow = window.open('', '', 'width=900,height=650');
-    printWindow.document.write(`<html><head><title>Print Order</title></head><body>${content.innerHTML}</body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 500);
+    const win = window.open("", "", "width=800,height=600");
+    win.document.write(`<html><body>${content.innerHTML}</body></html>`);
+    win.document.close();
+    win.print();
   };
 
+  const callNumber = (number) => {
+    if (Capacitor.isNativePlatform()) {
+      window.open(`tel:${number}`);
+    } else {
+      alert("Phone call only works on mobile");
+    }
+  };
+  // ✅ Export PDF
   const handleExportPDF = async () => {
     const canvas = await html2canvas(contentRef.current);
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF("p", "mm", "a4");
+    const imgData = canvas.toDataURL("image/png");
     const width = pdf.internal.pageSize.getWidth();
     const height = (canvas.height * width) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+    pdf.addImage(imgData, "PNG", 0, 0, width, height);
     pdf.save(`order_${order.orderId}.pdf`);
   };
 
-  return (
-    <Modal
-      open={visible}
-      onCancel={onClose}
-      footer={null}
-      width={900}
-      title={
-        <div className="flex items-center justify-between">
-          <span><ShoppingCartOutlined className="mr-2" />Order #{order.orderId}</span>
-          <Tag color="blue">{order.status}</Tag>
-        </div>
-      }
-    >
-      <div ref={contentRef}>
-        <Card bordered={false}>
-          <Descriptions bordered size="small" column={2}>
-            <Descriptions.Item label="Order Time">
-              {new Date(order.orderTime).toLocaleString()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Customer">
-              {order.customer?.name || 'N/A'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Payment Method">
-              <Tag color="purple">{order.paymentMethod}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Payment Status">
-              <Tag color={order.paymentStatus === "Completed" ? "green" : "red"}>
-                {order.paymentStatus}
-              </Tag>
-            </Descriptions.Item>
-            {order.couponCode && (
-              <Descriptions.Item label="Coupon Code">
-                <Tag color="orange">{order.couponCode}</Tag>
-              </Descriptions.Item>
-            )}
-          </Descriptions>
+  
+const generatePlainTextReceipt = (data) => {
+    console.log(data)
+ const store={
+       logo:        "/logo/inspiredgrow.jpg",                       //  40-50 px square looks right
+ storeName:   data.warehouse.warehouseName,                                //  already in state
+ tagline:     "GROCERY ON WHEELS",
+ address:     "Basement 210-211 new Rishi Nagar near Shree Shyam Baba Mandir Gali No. 9, Hisar – 125001",
+ gst:         "06AAGCI0630K1ZR",
+ phone:       "9050092092",
+ email:       "INSPIREDGROW@GMAIL.COM",
+   }
+  console.log("Mock Data",data)
+ const lineWidth = 42; // Standard for 3-inch (80mm) Epson P80 printers
+ const line = '-'.repeat(lineWidth) + '\n';
 
-          <Divider orientation="left"><ShoppingCartOutlined className="mr-2" />Items Breakdown</Divider>
+ // --- Helper Functions ---
+ const padRight = (str, len, char = ' ') => (String(str) + char.repeat(len)).substring(0, len);
+ const padLeft = (str, len, char = ' ') => (char.repeat(len) + String(str)).slice(-len);
+ 
+ const wrapText = (txt, width) => {
+   if (!txt || width <= 0) return [""];
+   const words = txt.split(" ");
+   const out   = [];
+   let row = "";
+   words.forEach(w => {
+     if ((row + " " + w).trim().length <= width) {
+       row = (row ? row + " " : "") + w;
+     } else {
+       if (row) out.push(row);
+       row = w;
+     }
+   });
+   if (row) out.push(row);
+   return out;
+ };
 
-          <Table
-            columns={columns}
-            dataSource={breakdown.itemDetails}
-            rowKey={(_, idx) => idx}
-            pagination={false}
-            size="middle"
-            className="mb-6"
-          />
 
-          <Divider orientation="left"><DollarOutlined className="mr-2" />Price Summary</Divider>
+ const centerText = (txt) => {
+   const space = Math.max(0, Math.floor((lineWidth - txt.length) / 2));
+   return " ".repeat(space) + txt;
+ };
 
-          <div className="price-summary-grid">
-            <div className="price-summary-col">
-              <div className="price-row"><span>Subtotal:</span><span>{order.subtotal.toFixed(2)}</span></div>
-              <div className="price-row"><span>Item Discounts:</span><span>-{breakdown.totalDiscount.toFixed(2)}</span></div>
-              <div className="price-row"><span>Tax:</span><span>{breakdown.totalTax.toFixed(2)}</span></div>
-            </div>
-            <div className="price-summary-col">
-              <div className="price-row"><span>Processing Fee:</span><span>{(order.processingFee || 0).toFixed(2)}</span></div>
-              <div className="price-row"><span>Shipping Fee:</span><span>{(order.shippingFee || 0).toFixed(2)}</span></div>
-              <div className="mt-2 text-lg font-semibold price-row"><span>Total:</span><span>{order.totalAmount.toFixed(2)}</span></div>
-            </div>
-          </div>
+ const twoColumn = (left, right) =>
+   left + " ".repeat(Math.max(0, lineWidth - left.length - right.length)) + right;
 
-          <Divider orientation="left"><PercentageOutlined className="mr-2" />Shipping Address</Divider>
-          <div className="text-sm">
-            {order.shippingAddress && (
-              <div>
-                {order.shippingAddress[0].houseNo}, {order.shippingAddress[0].area},<br />
-                {order.shippingAddress[0].city}, {order.shippingAddress[0].state}, {order.shippingAddress[0].country} - {order.shippingAddress[0].postalCode}
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
+ 
+ const col = { sno: 3, item: 13, qty: 4, mrp: 7, rate: 7, total: 8 }; // still 42
 
-      <Divider />
+ 
+ // A single, reliable source for all column widths
+ const colWidths = {
+   sno: 3,
+   item: 18, // Increased item width slightly for better wrapping
+   qty: 4,
+   mrp: 7,
+   rate: 7,
+   total: 3,
+ };
+ // Adjusted total to fit, let's recalculate: 3+18+4+7+7 = 39. Left for total = 3. Too small.
+ // Let's use the previous stable widths.
+ const finalColWidths = {
+   sno: 3,
+   item: 15,
+   qty: 4,
+   mrp: 7,
+   rate: 7,
+   total: 6,
+ };
 
-      <div className="flex justify-end gap-2 mt-4">
-        <Button icon={<FilePdfOutlined />} onClick={handleExportPDF}>Export PDF</Button>
-        <Button icon={<PrinterOutlined />} onClick={handlePrint}>Print</Button>
-        <Button type="primary" onClick={onClose}>Close</Button>
-      </div>
-
-      <style jsx>{`
-        .price-summary-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-        .price-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
-          border-bottom: 1px solid #f0f0f0;
-        }
-      `}</style>
-    </Modal>
-  );
+ // =================================================================
+ // THIS IS THE NEW, SIMPLER, AND CORRECTED ITEM ROW FORMATTER
+ // =================================================================
+  
+const formatItemRow = (item, idx) => {
+ console.log("Item in formatItemRow",item.item.itemName)
+ const lines = wrapText(item.item.itemName, col.item).slice(0, 4); // up to 4 lines
+ let txt = '';
+ lines.forEach((ln, i) => {
+   if (i === 0) {
+     txt += padRight(idx + 1, col.sno) +
+            padRight(ln,        col.item) +
+            padLeft (item.quantity,               col.qty)   +
+            padLeft (Number(item.item.mrp).toFixed(2),  col.mrp)  +
+            padLeft (Number(item.salesPrice).toFixed(2),     col.rate) +
+            padLeft ((item.quantity * item.salesPrice).toFixed(2), col.total) + '\n';
+   } else {
+     txt += padRight('', col.sno) +
+            padRight(ln, col.item) +
+            padLeft('', col.qty)  +
+            padLeft('', col.mrp)  +
+            padLeft('', col.rate) +
+            padLeft('', col.total) + '\n';
+   }
+ });
+ return txt;
 };
 
-export default PriceBreakdownModal;
+
+
+ let text = '';
+
+ // --- Header ---
+ text += centerText(store.storeName || "Groceryon wheels") + '\n';
+ 
+ wrapText(store.address, lineWidth).forEach(wrappedLine => {
+     text += centerText(wrappedLine) + '\n';
+ });
+
+ text += centerText(`GST: ${store.gst}`) + '\n';
+ text += centerText(`Phone: ${store.phone}`) + '\n';
+ text += centerText(`Email: ${store.email}`) + '\n';
+ text += line;
+
+ // --- Order Info ---
+ const now = new Date();
+ const dateStr = now.toLocaleDateString('en-IN');
+ const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+ text += twoColumn(`Date: ${dateStr}`, `Time: ${timeStr}`) + '\n';
+ text +=`orderNumber: #${data.orderNumber}`+'\n';
+ text+=`Customer: ${data.customer.name || '-'}`+'\n';
+ text += line;
+ // --- Items Table Header ---
+
+ text += padRight("#", col.sno) +
+         padRight("Item", col.item) +
+         padLeft ("Qty",  col.qty)  +
+         padLeft ("MRP",  col.mrp)  +
+         padLeft ("Rate", col.rate) +
+         padLeft ("Total",col.total) + "\n";
+ 
+ // --- Items Table Body ---
+ data.items.forEach((item, index) => {
+   console.log("Item",item)
+   text += formatItemRow(item, index);
+ });
+ text += line;
+
+ // --- Full Summary Section ---
+ const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0);
+
+       const rawTotal = data.items.reduce((sum, item) => sum + (item.quantity * item.salesPrice), 0);
+
+       const disc = data.discountApplied || 0;
+       const taxAmt = data.tax || 0;
+
+
+       const netBeforeTax = rawTotal - disc;
+       
+const totalM=data.items.reduce((sum, item) => sum + (item.quantity * item.item.mrp), 0);
+
+const totalSales=data.items.reduce((sum, item) => sum + (item.quantity * item.salesPrice), 0);
+
+const additionalCharges=data.additionalPayment?.reduce((sum, p) => sum + p.amount, 0);
+   
+// const paid = data.payments.reduce((sum, p) => sum + p.amount, 0);
+     
+// const prevDue = data.previousBalance  || 0;
+
+// const totalDue = prevDue + netBeforeTax + taxAmt - paid;
+
+
+ const addSummaryLine = (label, value) => {
+     return padRight(label, lineWidth - 16) + padLeft(value, 16) + '\n';
+ };
+
+ text += addSummaryLine('Total Quantity:', totalQuantity || 0);
+ text += addSummaryLine('Before Tax:', totalM?.toFixed(2));
+ text += addSummaryLine('Total Discount:', `-${(totalM-totalSales )?.toFixed(2)}`);
+ text += addSummaryLine('Net Before Tax:', totalSales?.toFixed(2));
+ text += addSummaryLine('Tax Amount:', taxAmt?.toFixed(2));
+ text += addSummaryLine('Delivery Fee:', (data.deliveryCharge || 0)?.toFixed(2));
+ text += addSummaryLine('Processing Fee:', (data.processingFee || 0)?.toFixed(2));
+ text += addSummaryLine('Coupon Discount:', `-${(data.discountApplied || 0)?.toFixed(2)}`);
+ //text += addSummaryLine('Additional Charges:', additionalCharges?.toFixed(2));
+ 
+ 
+ 
+ text += addSummaryLine('TOTAL:', ( data.totalAmount)?.toFixed(2) || 0);
+//  text += addSummaryLine('Paid Payment:', paid?.toFixed(2));
+//  text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
+//  text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
+ text += line;
+  // data.payments.forEach((p, i) => {
+       text += `Payment Type: ${data.paymentMethod=="COD"?"Cash":"Bank"} ₹${data.totalAmount?.toFixed(2)||0}\n`;
+  //  });
+ // --- Footer ---
+ text += centerText('Thank You & Visit Again!') + '\n\n\n';
+  console.log(text)
+ return text;
+};
+
+
+const handleBluetoothPrint = (sale) => {
+  try {
+    setLoading(true);
+    setPrint(sale)
+    const printinfo = generatePlainTextReceipt(sale);
+    console.log(printinfo);
+
+    window.bluetoothSerial.isConnected(
+      () => {
+        // ✅ Device is connected, proceed with print
+        window.bluetoothSerial.write(
+          printinfo,
+          () => alert('✅ Print success'),
+          (failure) => alert(`❌ Print failed: ${failure}`)
+        );
+      },
+      () => {
+        // ❌ No device connected
+       setDevice(true);
+      }
+    );
+
+  } catch (error) {
+    console.error("Bluetooth print error:", error);
+    alert("❌ Unexpected error occurred.");
+  } finally {
+    setLoading(false);
+  }
+};
+const openMap = (address) => {
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  window.open(url, "_blank");
+};
+
+  return (
+    // <Modal
+    //   open={visible}
+    //   onCancel={onClose}
+    //   footer={null}
+    //   width="100%"
+    //   className="rounded-none mobile-modal"
+    //   style={{ top: 0, padding: 0 }}
+    //   bodyStyle={{
+    //     padding: "0",
+    //     height: "100%",
+    //     overflow: "hidden",
+    //     background: "#f8fafc",
+    //   }}
+    //   closable={false}
+    // >
+    //   {
+    //     print &&  <Print print={print} setPrint={setPrint} setDevice={setDevice}/>
+    //   }
+    //   {/* Header */}
+    //   <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm">
+    //     <div className="flex items-center gap-2 text-base font-semibold text-gray-800">
+    //       <ShoppingCartOutlined />
+    //       Order #{order.orderNumber}
+    //     </div>
+    //     <Tag color="blue" className="p-2 py-2 text-xs rounded-md" onClick={()=>onClose()}>
+    //      x
+    //     </Tag>
+    //   </div>
+    //   {
+    //               device && <BluetoothDevicesPage setDevice={setDevice} />
+    //             }  
+    //   {/* Content */}
+    //   <div
+    //     ref={contentRef}
+    //     className="overflow-y-auto pb-28 h-[calc(100vh-60px)] px-4 pt-3"
+    //   >
+    //     {/* Customer Info */}
+    //     <div className="p-3 mb-3 bg-white shadow-sm rounded-xl">
+    //       <p className="mb-1 text-sm text-gray-500">Customer</p>
+    //       <p className="text-base font-medium text-gray-800">
+    //         {order.customer?.name || "N/A"}
+    //       </p>
+    //       <p className="text-base font-medium text-gray-800" onClick={()=>callNumber(order.customer.phone)}>
+    //         {order.customer?.phone || "N/A"}
+    //       </p>
+    //       <div className="flex justify-between mt-2 text-sm">
+    //         <span>Payment:</span>
+    //         <Tag color={order.paymentStatus === "Completed" ? "green" : "red"}>
+    //           {order.paymentStatus}
+    //         </Tag>
+    //       </div>
+    //       <div className="flex justify-between mt-2 text-sm">
+    //         <span>Method:</span>
+    //         <Tag color="purple">{order.paymentMethod}</Tag>
+    //       </div>
+    //       {order.assignRider && (
+    //         <div className="flex justify-between mt-2 text-sm">
+    //         <span>Assign Rider:</span>
+    //         <span>{order.assignRider.username}</span>
+    //       </div>
+    //       )}
+    //     </div>
+
+    //     {/* Items */}
+    //     <div className="p-3 mb-3 overflow-y-auto bg-white shadow-sm rounded-xl max-h-44">
+    //       <h3 className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+    //         <ShoppingCartOutlined /> Items
+    //       </h3>
+    //       {order.items.map((item, i) => (
+    //         <div
+    //           key={i}
+    //           className="flex items-center justify-between py-2 border-b last:border-b-0"
+    //         >
+    //           <div>
+    //             <p className="text-sm font-medium text-gray-800">
+    //               {item.item?.itemName || "Unnamed Item"}
+    //             </p>
+    //             <p className="text-xs text-gray-500">
+    //               {item.quantity} × ₹{item.salesPrice?.toFixed(2)}
+    //             </p>
+    //           </div>
+    //           <div className="text-sm font-semibold text-gray-700">
+    //             ₹{(item.salesPrice * item.quantity).toFixed(2)}
+    //           </div>
+    //         </div>
+    //       ))}
+    //     </div>
+
+    //     {/* Summary */}
+    //     <div className="p-3 mb-3 bg-white shadow-sm rounded-xl">
+    //       <h3 className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+    //         💰 Summary
+    //       </h3>
+    //       <div className="flex justify-between py-1 text-sm">
+    //         <span>Subtotal</span>
+    //         <span>₹{breakdown.subtotal.toFixed(2)}</span>
+    //       </div>
+    //       <div className="flex justify-between py-1 text-sm">
+    //         <span>Discount</span>
+    //         <span>-₹{breakdown.totalDiscount.toFixed(2)}</span>
+    //       </div>
+    //       <div className="flex justify-between py-1 text-sm">
+    //         <span>Tax</span>
+    //         <span>₹{breakdown.totalTax.toFixed(2)}</span>
+    //       </div>
+    //       <div className="flex justify-between py-1 text-sm">
+    //         <span>Shipping</span>
+    //         <span>₹{(order.shippingFee  || order.deliveryCharge || 0).toFixed(2)}</span>
+    //       </div>
+    //       <div className="flex justify-between py-1 text-sm">
+    //         <span>Processing</span>
+    //         <span>₹{(order.processingFee || 0).toFixed(2)}</span>
+    //       </div>
+    //       <Divider className="my-2" />
+    //       <div className="flex justify-between text-base font-semibold text-gray-800">
+    //         <span>Total</span>
+    //         <span>₹{order.totalAmount.toFixed(2)}</span>
+    //       </div>
+    //     </div>
+
+    //     {/* Shipping */}
+    //     <div className="p-3 mb-3 bg-white shadow-sm rounded-xl">
+    //       <h3 className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+    //         📦 Shipping Address
+    //       </h3>
+    //       {order.shippingAddress?.[0] ? (
+    //         <div className="text-sm leading-relaxed text-gray-700" onClick={()=>openMap(`${order.shippingAddress[0].houseNo} ${order.shippingAddress[0].area} ${order.shippingAddress[0].city} ${order.shippingAddress[0].state} ${order.shippingAddress[0].country} ${order.shippingAddress[0].postalCode}`)}>
+    //           {order.shippingAddress[0].houseNo},{" "}
+    //           {order.shippingAddress[0].area},<br />
+    //           {order.shippingAddress[0].city},{" "}
+    //           {order.shippingAddress[0].state},{" "}
+    //           {order.shippingAddress[0].country} -{" "}
+    //           {order.shippingAddress[0].postalCode}
+    //         </div>
+    //       ) : (
+    //         <p className="text-sm text-gray-500">No address available.</p>
+    //       )}
+    //     </div>
+
+
+    //     {order.status!=="Completed" && !order.posCreated && (
+    //         <Button
+    //         type="text"
+    //         icon={<EditOutlined />}
+    //         onClick={() => {
+    //           navigate(`/order/pos-create?orderId=${order._id}&warehouse=${order.warehouse._id}&customer=${order.customer._id}`);
+    //       }}
+    //       >
+    //         Edit
+    //       </Button>  
+    //     )}
+        
+    //     <Button
+    //       type="text"
+    //       icon={<PrinterOutlined />}
+    //       onClick={()=>handleBluetoothPrint(order)}
+    //     >
+    //       Print
+    //     </Button>
+    //   </div>
+
+     
+
+    //   <style jsx>{`
+    //     .mobile-modal .ant-modal-content {
+    //       border-radius: 0;
+    //       box-shadow: none;
+    //     }
+    //     .mobile-modal .ant-modal-body {
+    //       padding: 0 !important;
+    //     }
+    //   `}</style>
+    // </Modal>
+    <Modal
+  open={visible}
+  onCancel={onClose}
+  footer={null}
+  width="100%"
+  className="rounded-none mobile-modal"
+  style={{ top: 0, padding: 0 }}
+  bodyStyle={{
+    padding: "0",
+    height: "100%",
+    overflow: "hidden",
+    background: "#f1f5f9",
+  }}
+  closable={false}
+>
+  {print && <Print print={print} setPrint={setPrint} setDevice={setDevice} />}
+
+  {/* HEADER */}
+  <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white shadow-md">
+    <div className="flex items-center gap-2 text-base font-semibold text-gray-800">
+      <ShoppingCartOutlined /> Order #{order.orderNumber}
+    </div>
+
+    <button
+      onClick={onClose}
+      className="flex items-center justify-center text-white bg-red-500 rounded-full w-7 h-7"
+    >
+      ✕
+    </button>
+  </div>
+
+  {device && <BluetoothDevicesPage setDevice={setDevice} />}
+
+  {/* BODY */}
+  <div
+    ref={contentRef}
+    className="overflow-y-auto pb-28 h-[calc(100vh-60px)] px-4 pt-3 space-y-3"
+  >
+
+    {/* CUSTOMER CARD */}
+    <div className="p-4 bg-white shadow rounded-xl">
+      <p className="mb-1 text-xs text-gray-500">Customer</p>
+
+      <p className="text-base font-semibold text-gray-800">
+        {order.customer?.name || "N/A"}
+      </p>
+
+      {/* CALL BUTTON */}
+      <button
+        onClick={() => callNumber(order.customer.phone)}
+        className="flex items-center gap-2 px-3 py-1 mt-1 text-sm font-medium text-white bg-green-600 rounded-lg"
+      >
+        📞 Call Customer
+      </button>
+
+      <div className="flex justify-between mt-3 text-sm">
+        <span>Payment:</span>
+        <Tag color={order.paymentStatus === "Completed" ? "green" : "red"}>
+          {order.paymentStatus}
+        </Tag>
+      </div>
+
+      <div className="flex justify-between mt-2 text-sm">
+        <span>Method:</span>
+        <Tag color="purple">{order.paymentMethod}</Tag>
+      </div>
+
+      {order.assignRider && (
+        <div className="flex justify-between mt-2 text-sm">
+          <span>Rider:</span>
+          <span className="font-medium">{order.assignRider.username}</span>
+        </div>
+      )}
+    </div>
+
+    {/* ITEMS */}
+    <div className="p-4 bg-white shadow rounded-xl">
+      <h3 className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+        <ShoppingCartOutlined /> Items
+      </h3>
+
+      <div className="pr-1 space-y-3 overflow-y-auto max-h-48">
+        {order.items.map((item, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between pb-2 border-b last:border-b-0"
+          >
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                {item.item?.itemName || "Unnamed Item"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {item.quantity} × ₹{item.salesPrice?.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-sm font-semibold text-gray-900">
+              ₹{(item.salesPrice * item.quantity).toFixed(2)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* SUMMARY */}
+    <div className="p-4 bg-white shadow rounded-xl">
+      <h3 className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+        💰 Summary
+      </h3>
+
+      <div className="flex justify-between py-1 text-sm">
+        <span>Subtotal</span>
+        <span>₹{breakdown.subtotal.toFixed(2)}</span>
+      </div>
+
+      <div className="flex justify-between py-1 text-sm">
+        <span>Discount</span>
+        <span>-₹{(breakdown.totalDiscount + order.discountApplied)?.toFixed(2) || 0}</span>
+      </div>
+
+      <div className="flex justify-between py-1 text-sm">
+        <span>Tax</span>
+        <span>₹{breakdown.totalTax.toFixed(2)}</span>
+      </div>
+
+      <div className="flex justify-between py-1 text-sm">
+        <span>Shipping</span>
+        <span>₹{(order.shippingFee || order.deliveryCharge || 0).toFixed(2)}</span>
+      </div>
+
+      <div className="flex justify-between py-1 text-sm">
+        <span>Processing</span>
+        <span>₹{(order.processingFee || 0).toFixed(2)}</span>
+      </div>
+
+      <Divider className="my-2" />
+
+      <div className="flex justify-between text-base font-bold text-gray-900">
+        <span>Total</span>
+        <span>₹{order.totalAmount.toFixed(2)}</span>
+      </div>
+    </div>
+
+    {/* SHIPPING */}
+    <div className="p-4 bg-white shadow rounded-xl">
+      <h3 className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-700">
+        📦 Shipping Address
+      </h3>
+
+      {order.shippingAddress?.[0] ? (
+        <div
+          className="text-sm leading-relaxed text-gray-700 cursor-pointer"
+          onClick={() =>
+            openMap(
+              `${order.shippingAddress[0].houseNo} ${order.shippingAddress[0].area} ${order.shippingAddress[0].city} ${order.shippingAddress[0].state} ${order.shippingAddress[0].country} ${order.shippingAddress[0].postalCode}`
+            )
+          }
+        >
+          {order.shippingAddress[0].houseNo},{" "}
+          {order.shippingAddress[0].area},<br />
+          {order.shippingAddress[0].city},{" "}
+          {order.shippingAddress[0].state},{" "}
+          {order.shippingAddress[0].country} -{" "}
+          {order.shippingAddress[0].postalCode}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">No address available.</p>
+      )}
+    </div>
+
+    {/* ACTION BUTTONS */}
+    <div className="flex items-center gap-2 pt-2">
+      {order.status !== "Completed" && !order.posCreated && (
+        <Button
+          type="primary"
+          icon={<EditOutlined />}
+          className="w-full"
+          onClick={() => {
+            navigate(
+              `/order/pos-create?orderId=${order._id}&warehouse=${order.warehouse._id}&customer=${order.customer._id}`
+            );
+          }}
+        >
+          Edit Order
+        </Button>
+      )}
+
+      <Button
+        type="primary"
+        icon={<PrinterOutlined />}
+        className="w-full"
+        onClick={() => handleBluetoothPrint(order)}
+      >
+        Print
+      </Button>
+    </div>
+  </div>
+
+  <style jsx>{`
+    .mobile-modal .ant-modal-content {
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .mobile-modal .ant-modal-body {
+      padding: 0 !important;
+    }
+  `}</style>
+</Modal>
+
+  );
+}

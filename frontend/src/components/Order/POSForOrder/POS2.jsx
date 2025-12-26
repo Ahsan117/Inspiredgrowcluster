@@ -97,8 +97,8 @@ confirmBack();
       } else if (typeof type === "number") {
         newQty =type; // remove leading zeros
       }
-     if (newQty > item.stock) {
-      newQty = item.stock; // cap it at stock
+     if (newQty > item.currentStock) {
+      newQty = item.currentStock; // cap it at stock
     }
       return {
         ...item,
@@ -352,7 +352,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
                 <div className="flex items-center justify-center w-12 h-12 text-lg font-bold text-white shadow-xs bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl">
                   {item.itemName?.charAt(0)?.toUpperCase() || "?"}
                 </div>
-                {item.stock <= 0 && (
+                {item.currentStock <= 0 && (
                   <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                     Out
                   </div>
@@ -379,7 +379,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
                     item.currentStock > 0 ? "bg-yellow-50 text-yellow-700" :
                     "bg-red-50 text-red-700"
                   }`}>
-                    {item.stock || 0} available
+                    {item.currentStock || 0} available
                   </span>
 
                   <div className="flex items-center gap-2 bg-gray-100/70 rounded-full p-0.5">
@@ -441,7 +441,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
 
 
   {
-    item.discountPolicy!=="None" && (
+    !item.discountPolicy=="None" && (
 <button
     onClick={() => {
       setOfferView(true);

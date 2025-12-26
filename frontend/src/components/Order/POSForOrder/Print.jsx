@@ -186,7 +186,9 @@ const formatItemRow = (item, idx) => {
     text += formatItemRow(item, index);
   });
   text += line;
-
+ 
+  const deliveryFee=order.deliveryFee || 0;
+  const processingFee=order.processingFee || 0;
   // --- Full Summary Section ---
   const totalQuantity = order.rows.reduce((sum, item) => sum + item.quantity, 0);
                 
@@ -210,7 +212,7 @@ const totalSales=order.rows.reduce((sum, item) => sum + (item.quantity * item.sa
 const prevDue = order.previousBalance  || 0;
 console.log("prevDue", prevDue)
 console.log(netBeforeTax,taxAmt,paid)
-const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount + deliveryFee +processingFee;
    const additionalCharges=order.additionalPayment.reduce((sum, p) => sum + p.amount, 0);
     
   const addSummaryLine = (label, value) => {
@@ -225,8 +227,11 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
   text += addSummaryLine('Additional Charges:',additionalCharges?.toFixed(2) || 0);
   if(exclusiveDiscount > 0)
   text += addSummaryLine('Premium Membership Discount:',`-${exclusiveDiscount?.toFixed(2) || 0}`);
-  
-  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales+ additionalCharges - exclusiveDiscount)?.toFixed(2) || 0);
+  if(deliveryFee > 0) 
+  text += addSummaryLine('Delivery Fee:', (deliveryFee)?.toFixed(2) || 0);
+  if(processingFee > 0) 
+    text += addSummaryLine('Processing Fee:', (processingFee)?.toFixed(2) || 0);
+  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales+ additionalCharges - exclusiveDiscount + deliveryFee + processingFee)?.toFixed(2) || 0);
   text += addSummaryLine('Paid Payment:', (paid)?.toFixed(2));
   text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
   text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
@@ -389,7 +394,8 @@ const handleDownload = async () => {
     const generateReceiptHtml = () => {
         const { order, customer, seller, store, payments, dues ,exclusiveDiscount} = mockData;
          console.log("1")
-         
+          const deliveryFee=order.deliveryFee || 0;
+          const processingFee=order.processingFee || 0;
         const totalQuantity = order.rows.reduce((sum, item) => sum + item.quantity, 0);
                  console.log("2")
 
@@ -408,7 +414,7 @@ const paid = payments.reduce((sum, p) => sum + p.amount, 0);
       
 const prevDue = order.previousBalance  || 0;
 
-const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount + deliveryFee + processingFee;
  
 const finalTotal = netBeforeTax + taxAmt;
         console.log(7)
@@ -480,7 +486,9 @@ console.log(8)
                         <tr><td>Tax Amount</td><td class="r">${taxAmt?.toFixed(2) || 0}</td></tr>
                         <tr><td>Additional Charges</td><td class="r">${additionalCharges?.toFixed(2) || 0}</td></tr>
                         ${exclusiveDiscount > 0 && (`<tr><td>Premium Membership Discount</td><td class="r">−${exclusiveDiscount?.toFixed(2) || 0}</td></tr>`)}
-                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales+additionalCharges-exclusiveDiscount)?.toFixed(2) || 0}</strong></td></tr>
+                        ${deliveryFee > 0 && (`<tr><td>Delivery Fee</td><td class="r">−${deliveryFee?.toFixed(2) || 0}</td></tr>`)}
+                        ${processingFee > 0 && (`<tr><td>Processing Fee</td><td class="r">−${processingFee?.toFixed(2) || 0}</td></tr>`)}
+                        <tr><td><strong>Total</strong></td><td class="r"><strong>${((taxAmt || 0)+totalSales+additionalCharges-exclusiveDiscount  + deliveryFee + processingFee)?.toFixed(2) || 0}</strong></td></tr>
                         <tr><td>Paid Payment</td><td class="r">${(paid)?.toFixed(2) || 0}</td></tr>
                         <tr><td>Previous Due</td><td class="r">${prevDue?.toFixed(2) || 0}</td></tr>
                         <tr><td><strong>Total Due Amount</strong></td><td class="r"><strong>${totalDue?.toFixed(2) || 0}</strong></td></tr>

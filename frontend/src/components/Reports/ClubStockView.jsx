@@ -35,20 +35,28 @@ const ClubStockView = ({ item,setView,warehouses ,selectedWarehouse}) => {
       }
        
       )
-        console.log(selectedWarehouse)
-      if(selectedWarehouse === "all") {
+        console.log("s",selectedWarehouse)
+        
+      if(selectedWarehouse.length <= 0) {
+        console.log("a")
         stocksByWh.forEach(w=>{
- if(!w.restricted){
+         if(!w.restricted){
             setVan(prev=>prev+w.stock);   
         }
       }
        
       )
-      }else{
-        const selectedWh = stocksByWh.find(w => w.id === selectedWarehouse);
-        if(selectedWh && !selectedWh.restricted) {
-          setVan(selectedWh.stock);
-        }
+      }
+      else{
+        console.log(selectedWarehouse)
+        const s= selectedWarehouse.map(i => i.value)
+        stocksByWh.forEach(w=>{
+          if(!w.restricted && s.includes(w.id)){
+             setVan(prev=>prev+w.stock);   
+         }
+       }
+        
+       )
       }
                 console.log({ ...item, stocksByWh });
     } catch {

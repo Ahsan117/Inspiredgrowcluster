@@ -115,7 +115,7 @@ let watchId=""
     const getLocation = async () => {
   try {
     const permission = await Geolocation.requestPermissions();
-    console.log("Permission:", permission);
+    // console.log("Permission:", permission);
 
     const position = await Geolocation.getCurrentPosition({
       enableHighAccuracy: true,
@@ -124,7 +124,7 @@ let watchId=""
 
     if (position?.coords) {
       const { latitude, longitude } = position.coords;
-      console.log("Got location:", latitude, longitude);
+      // console.log("Got location:", latitude, longitude);
       return [latitude,longitude]; // GeoJSON expects [lng, lat]
     }
 
@@ -175,6 +175,9 @@ let watchId=""
   const [invoiceCode, setInvoiceCode] = useState(
     `SL/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, "0")}/`
   );
+
+  const [deliveryFee,setDeliveryFee]=useState(0);
+  const [processingFee,setProcessingFee]=useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [previousBalance, setPreviousBalance] = useState(0);
 
@@ -197,7 +200,7 @@ let watchId=""
   const[print,setPrint]=useState({})
   const [exclusiveDiscount, setExclusiveDiscount] = useState(0);
   const[orderId,setOrderId]=useState(null)
-   
+   const[cart,setCart]=useState({})
     
   // ─── HELPERS ────────────────────────────────────────────────────────
   const authHeaders = () => ({
@@ -206,11 +209,13 @@ let watchId=""
   
 
  async function fetchLiveQty (warehouseId, invId) {
+  // console.log("CAll",warehouseId)
   if (!warehouseId || !invId) return 0;
   const { data } = await axios.get(
     `${link}/api/stock/${invId}?warehouse=${warehouseId}`,
     authHeaders()
   );
+  // console.log(data)
   /* fall back to openingStock if qty hasn’t moved yet */
   return (data.currentStock ?? data.openingStock ?? 0);
 }
@@ -236,7 +241,103 @@ let watchId=""
       setOrderId(params.get("orderId") || null)
     }, []);
 
-  
+    useEffect(() => {
+      // ✅ Check dependencies before doing anything
+      if (!orderId || !Array.isArray(allItems) || allItems.length === 0) return;
+    //  console.log(allItems)
+      // console.log("Fetching order details for:", orderId);
+    
+      const fetchOrder = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            console.warn("No token found. Aborting order fetch.");
+            return;
+          }
+    
+          const { data } = await axios.get(
+            `${link}/api/orders/particular-order/${orderId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+    
+          const orderData = data?.data;
+          if (!orderData) {
+            console.error("Invalid order response:", data);
+            return;
+          }
+    
+          console.log("Fetched order data:", orderData);
+            // console.log(allItems)
+          // ✅ Merge items with stock info
+          const itemsWithStock = await Promise.all(
+            orderData.items.map(async (i) => {
+              const itemDoc = allItems.find(
+                (ai) =>
+                  ai.parentId === i.item?._id &&
+                  (!i.variant || ai._id === i.variant || ai.variantId === i.variant) &&
+                  ai.warehouse?._id === orderData.warehouse
+              );
+                    // console.log(orderData.warehouse)
+              if (!itemDoc) {
+                console.warn("❌ Item not found in local stock:", {
+                  itemId: i.item?._id,
+                  itemName: i.item?.itemName,
+                  warehouseId: orderData.warehouse,
+                });
+                return null;
+              }
+    
+              // ✅ Fetch live quantity
+              const liveQty = await fetchLiveQty(
+                orderData.warehouse,
+                i.variant || i.item._id
+              );
+    
+              // ✅ Build enriched item object
+              return {
+                category: itemDoc.category || null,
+                brand: itemDoc.brand || null,
+                description: i.item.description || itemDoc.description || "",
+                barcodes: itemDoc.barcodes || [],
+                purchasePrice: itemDoc.purchasePrice || 0,
+                item: i.item._id,
+                variant: i.variant || null,
+                itemName: itemDoc.itemName,
+                itemCode: itemDoc.itemCode || "",
+                openingStock: itemDoc.openingStock || 0,
+                stock: liveQty,
+                currentStock: liveQty,
+                salesPrice: i.price || itemDoc.salesPrice || 0,
+                quantity: i.quantity || 1,
+                origQty: i.quantity || 1,
+                discount: i.discount || 0,
+                tax: i.tax?._id || itemDoc.tax?._id || null,
+                taxRate: i.tax?.taxPercentage || itemDoc.tax?.taxPercentage || 0,
+                unit: i.unit || itemDoc.unit || null,
+                mrp: i.mrp || itemDoc.mrp || 0,
+                expiryDate: itemDoc.expiryDate || null,
+                subtotal:
+                  i.subtotal ||
+                  ((i.price || itemDoc.salesPrice || 0) * (i.quantity || 1) -
+                    (i.discount || 0)),
+              };
+            })
+          );
+    
+          // ✅ Filter out any null items (missing from local data)
+          const validItems = itemsWithStock.filter(Boolean);
+    
+          console.log("✅ Final merged items:", validItems);
+          setItems(validItems);
+        } catch (err) {
+          console.error("Error fetching order:", err);
+        }
+      };
+    
+      fetchOrder();
+    }, [orderId, allItems]);
+
+    
   useEffect(() => {
     if(editId){
       return;
@@ -309,8 +410,8 @@ useEffect(() => {
 
   
   useEffect(() => {
-  fetchItems(selectedWarehouse, !!editId); // Pass editId as isEditMode
-}, [selectedWarehouse, editId]);
+  fetchItems(selectedWarehouse, !!orderId); // Pass editId as isEditMode
+}, [selectedWarehouse, orderId]);
 
  
  async function fetchLookups() {
@@ -321,36 +422,39 @@ useEffect(() => {
     setAccounts(cached.accounts || []);
     setPaymentTypes(cached.paymentTypes || []);
     setTerminals(cached.terminals || []);
+    setCart(cached.cartSettings)
   }
 
   try {
-    const [wareRes, custRes, accRes, payRes, termRes] = await Promise.all([
+    const [wareRes, custRes, accRes, payRes, termRes,cartRes] = await Promise.all([
       axios.get(`${link}/api/warehouses?scope=mine`, authHeaders()),
       axios.get(`${link}/customer/customers`, authHeaders()),
       axios.get(`${link}/api/accounts`, authHeaders()),
       axios.get(`${link}/api/payment-types`, authHeaders()),
       axios.get(`${link}/api/terminals`, authHeaders()),
+      axios.get(`${link}/deliverysettings/all`, authHeaders()),
     ]);
-    console.log(wareRes,custRes,accRes,payRes,termRes)
+    // console.log(wareRes,custRes,accRes,payRes,termRes,cartRes)
     const lookups = {
       warehouses: wareRes.data.data || [],
       customers: custRes.data.data || [],
       accounts: accRes.data.data || [],
       paymentTypes: payRes.data.data || [],
       terminals: termRes.data.data || [],
+      cartSettings:cartRes.data.data[0] || {}
     };
     console.log("lookups",lookups)
     // if (!editId && lookups.customers.length) { // find or default to the first customer
       // const walkIn = lookups.customers.find(c => c.name.toLowerCase() === "walk-in customer");
       // setSelectedCustomer((walkIn?._id) || lookups.customers[0]._id);
     // }
-    console.log(lookups)
+    // console.log(lookups)
     setWarehouses(lookups.warehouses);
     setCustomers(lookups.customers);
     setAccounts(lookups.accounts);
     setPaymentTypes(lookups.paymentTypes);
     setTerminals(lookups.terminals);
-
+    setCart(lookups.cartSettings)
     localStorage.setItem("lookups", JSON.stringify(lookups));
   } catch (err) {
     console.error("❌ lookup fetch error", err);
@@ -358,7 +462,9 @@ useEffect(() => {
 }
 
 
-  async function fetchItems(warehouseId = selectedWarehouse, isEditMode = !!editId) {
+
+
+  async function fetchItems(warehouseId = selectedWarehouse, orderId) {
   if (!warehouseId) {
     setAllItems([]);
     return;
@@ -368,7 +474,7 @@ useEffect(() => {
     const params = {
       warehouse: warehouseId,
     };
-    if (!editId) {
+    if (!orderId) {
       params.inStock = true;
     }
 
@@ -461,6 +567,9 @@ if (data) {
       return null;
     }
   }
+
+   
+  
 
   async function deletePosTransaction(id) {
     try {
@@ -599,11 +708,14 @@ if (data) {
       amt += i.subtotal ;
       disc += i.discount || 0;
     });
+   const df= amt <cart.deliveryThresholdAmount ? cart.deliveryFeeUnderThreshold : 0
     const totaladdititonal= additionalPaymentAmount.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
     setAdditionalCharges(totaladdititonal);
     setQuantity(qty);
-    setTotalAmount(amt);
+    setTotalAmount(amt + df + cart.handlingFee);
     setTotalDiscount(disc);
+    setDeliveryFee((amt + totaladdititonal -exclusiveDiscount ) <cart.deliveryThresholdAmount ? cart.deliveryFeeUnderThreshold : 0);
+    setProcessingFee(cart.handlingFee)
   }, [items,additionalPaymentAmount]);
   
 
@@ -614,7 +726,7 @@ useEffect(() => {
   if (!q || !selectedWarehouse) return setFilteredItems([]);
 
   const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-  console.log(allItems)
+  // console.log(allItems)
   console.log("Filtering items with query:", q, "in warehouse:", selectedWarehouse);
   const filtered = allItems
     .filter((it) => {
@@ -630,7 +742,7 @@ useEffect(() => {
     .slice(0,20)
 
   setFilteredItems(filtered);
-  console.log("Filtered items:", filtered);
+  // console.log("Filtered items:", filtered);
 }, [searchItemCode, selectedWarehouse, allItems]);
 
 
@@ -810,7 +922,7 @@ async function addItem(it) {
       alert("Item sales price must be greater than zero.");
       return;
     }
-   console.log(newItem)
+  //  console.log(newItem)
     const updatedWithNewItem = [newItem,...items];
     const updatedWithOffer = applyOfferLogic(updatedWithNewItem); // 🔁 OFFER HERE
    
@@ -924,7 +1036,7 @@ async function addItemsInBatch(matchedItems) {
 async function updateItem(idx, field, val) {
   const numericVal = Number(val);
   const row = items[idx];
-  console.log(row)
+  // console.log(row)
   // ❗ Prevent salesPrice > MRP
   if (field === "salesPrice" && numericVal > row.mrp) {
     alert(`❗ Sales Price (${numericVal}) cannot exceed the MRP (${row.mrp})`);
@@ -1092,7 +1204,7 @@ async function updateItem(idx, field, val) {
     if (!selectedAccount) {
       throw new Error("Account is required");
     }
-   console.log("Please fill all required fields");
+  //  console.log("Please fill all required fields");
    
    
    
@@ -1131,8 +1243,7 @@ async function updateItem(idx, field, val) {
     if (validItems.length === 0) {
       throw new Error("No valid items to save. Please add valid items to the order.");
     }
-
-    
+ 
     const stockErrors = [];
 
      for (const it of validItems) {
@@ -1147,8 +1258,6 @@ async function updateItem(idx, field, val) {
     }
   }
 
-
-  
     if (validItems.length === 0) {
       throw new Error("No valid items to save. Please add valid items to the order.");
     }
@@ -1158,9 +1267,6 @@ async function updateItem(idx, field, val) {
     throw new Error("Stock validation failed");
   }
     
-    
-    const totalOther=additionalPaymentAmount.reduce((sum, p) => sum + (p.amount || 0), 0);
-  
     const payload = {
       orderId: orderId || null,
       customerModel:"Customer",
@@ -1172,16 +1278,19 @@ async function updateItem(idx, field, val) {
       additionalCharges: additionalCharges,
       additionalPayment: additionalPaymentAmount,
       exclusiveDiscount: exclusiveDiscount,
-      totalAmount: totalAmount - totalDiscount + additionalCharges - exclusiveDiscount + totalOther,
+      totalAmount: totalAmount - totalDiscount+additionalCharges - exclusiveDiscount,
       totalDiscount,
       couponCode: couponCode || undefined,
       payments,
       status,
       paymentMode,
       invoiceCount,
+      invoiceCode,
       previousBalance,
       adjustAdvancePayment,
       advancePaymentAmount,
+     deliveryFee,
+     processingFee
     };
 
     console.log("Generated payload:", payload);
@@ -1196,6 +1305,17 @@ async function updateItem(idx, field, val) {
     const url  = id ? `${link}/api/pos/${id}` : `${link}/api/pos/order`;
     const { data } = await axios[method](url, payload, authHeaders());
      console.log("Order saved:", data);
+     await axios.put(`https://pos.inspiredgrow.in/vps/api/orders/update-status/${orderId}`,
+      {status:"Delivered",fromPos:true},
+      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+     )
+     await axios.put(`https://pos.inspiredgrow.in/vps/api/orders/update-items`,{
+      orderId,items:payload.items
+     },{
+      headers:{
+        Authorization:`Bearer ${localStorage.getItem("token")}`
+      }
+     })
     /* ---- 3️⃣ Build the final invoice HTML ---- */
     const custObj = customers.find(c => c._id === selectedCustomer) || {};
      
@@ -1266,45 +1386,114 @@ async function updateItem(idx, field, val) {
     Swal.fire("Config error", "Payment type 'Hold' is missing.", "error");
     return;
   }
-  const a = await getLocation();;
+
   
+   
+  const validItems = items
+    .map((it) => {
+      const isValid = allItems.some(
+        (ai) =>
+          ai.parentId === it.item &&
+          (!it.variant || ai._id === it.variant || ai.variantId === it.variant) &&
+          ai.warehouse?._id === selectedWarehouse
+      );
+      if (!isValid) {
+        console.error("Invalid item in payload:", {
+          itemId: it.item,
+          variantId: it.variant,
+          itemName: it.itemName,
+          itemCode: it.itemCode,
+        });
+        return null;
+      }
+      return {
+        item: it.item,
+        variant: it.variant || null,
+        quantity: it.quantity,
+        origQty: it.origQty,
+        price: it.salesPrice,
+        discount: it.discount || 0,
+        unit: it.unit,
+        tax: it.tax,
+        subtotal: it.subtotal,
+      }; 
+    })
+    .filter((it) => it !== null);
+  
+    
+  const a = await getLocation();;
+  const totalOther=additionalPaymentAmount.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const shippingFee=totalAmount < cart.deliveryThresholdAmount? cart.deliveryFeeUnderThreshold : 0
   // 3️⃣  Build payload (your code) -----------------
+
   const payload = {
-    location: a,
+    location:a,
     warehouse: selectedWarehouse,
+    orderId: orderId || null,
+    customerModel:"Customer",
     customer: selectedCustomer,
     account: selectedAccount,
-    items: items.map((it) => ({
-      item: it.item,
-      variant: it.variant || null,
-      quantity: it.quantity,
-      price: it.salesPrice,
-      discount: it.discount || 0,
-      unit: it.unit,
-      tax: it.tax,
-      subtotal: it.subtotal,
-    })),
-    totalAmount: totalAmount - totalDiscount,
+    items: validItems,
+    additionalCharges: additionalCharges,
+    additionalPayment: additionalPaymentAmount,
+    exclusiveDiscount: exclusiveDiscount,
+    totalAmount: totalAmount - totalDiscount+additionalCharges - exclusiveDiscount,
     totalDiscount,
+    couponCode: couponCode || undefined,
     payments: [
       {
         paymentType: pt,
-        amount: totalAmount - totalDiscount,
+        amount: totalAmount - totalDiscount+additionalCharges - exclusiveDiscount,
         paymentNote: "Hold payment",
       },
     ],
     status: "OnHold",
     paymentMode: "hold",
     invoiceCount,
+    invoiceCode,
     previousBalance,
     adjustAdvancePayment,
     advancePaymentAmount,
-    couponCode: couponCode || undefined,
+   deliveryFee,
+   processingFee
   };
+  
+  // const payload = {
+  //   location: a,
+  //   warehouse: selectedWarehouse,
+  //   customer: selectedCustomer,
+  //   account: selectedAccount,
+  //   items: items.map((it) => ({
+  //     item: it.item,
+  //     variant: it.variant || null,
+  //     quantity: it.quantity,
+  //     price: it.salesPrice,
+  //     discount: it.discount || 0,
+  //     unit: it.unit,
+  //     tax: it.tax,
+  //     subtotal: it.subtotal,
+  //   })),
+  //   totalAmount: totalAmount - totalDiscount,
+  //   totalDiscount,
+  //   payments: [
+  //     {
+  //       paymentType: pt,
+  //       amount: totalAmount - totalDiscount ,
+  //       paymentNote: "Hold payment",
+  //     },
+  //   ],
+  //   status: "OnHold",
+  //   paymentMode: "hold",
+  //   invoiceCount,
+  //   previousBalance,
+  //   adjustAdvancePayment,
+  //   advancePaymentAmount,
+  //   couponCode: couponCode || undefined,
+  // };
   
   // 4️⃣  POST / PUT exactly as before --------------
   try {
-    
+    console.log(payload)
     const token = localStorage.getItem("token");
     if (currentOrderId) {
       await axios.put(`${link}/api/pos/${currentOrderId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -1531,7 +1720,7 @@ async function updateItem(idx, field, val) {
            {activeTab==="pos2" && <POS2 updateItem={updateItem} addItemsInBatch={addItemsInBatch} matchedItems={matchedItems} setMatchedItems={setMatchedItems}  searchItemCode={searchItemCode} setActiveTab={setActiveTab} setSearchItemCode={setSearchItemCode}  removeItem={removeItem} items={items} setItems={setItems} 
                                             allItems={allItems} addItem={addItem}  setScanning={setScanning} selectedWarehouse={selectedWarehouse}  filteredItems={filteredItems} scanning={scanning} orderPaymentMode={orderPaymentMode}    
            />}
-           {activeTab==="pos3" && <POS3 exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} setItems={setItems} isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting} allItems={allItems} showHoldList={showHoldList} heldInvoices={heldInvoices} handleEditInvoice={handleEditInvoice}
+           {activeTab==="pos3" && <POS3 deliveryFee={deliveryFee} processingFee={processingFee} exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} setItems={setItems} isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting} allItems={allItems} showHoldList={showHoldList} heldInvoices={heldInvoices} handleEditInvoice={handleEditInvoice}
            handleDeleteInvoice={handleDeleteInvoice} selectedWarehouse={selectedWarehouse} warehouses={warehouses} setSelectedWarehouse={setSelectedWarehouse}  setActiveTab={setActiveTab}
            invoiceCode={invoiceCode} selectedCustomer={selectedCustomer} setSelectedCustomer={setSelectedCustomer} searchItemCode={searchItemCode} setSearchItemCode={setSearchItemCode}  addItem={addItem}
            filteredItems={filteredItems}  scanning={scanning} setScanning={setScanning} orderPaymentMode={orderPaymentMode} items={items} updateItem={updateItem} removeItem={removeItem}

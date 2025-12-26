@@ -193,6 +193,10 @@ const PurchaseM= () => {
   // remember for next tick
   prevWarehouse.current = formData.warehouse;
 }, [formData.warehouse]);
+
+
+
+
 useEffect(() => {
   (async () => {
     try {
@@ -270,29 +274,86 @@ useEffect(() => {
           headers: { Authorization: `Bearer ${token}` },
         params: { warehouse: sWarehouse},
         })
+
+        const itemsByParent = new Map();
+        (data.data || []).forEach((it) => {
+          const parentId = it.parentItemId || it._id;
+          if (!itemsByParent.has(parentId)) {
+            itemsByParent.set(parentId, []);
+          }
+          itemsByParent.get(parentId).push(it);
+        });
+    
+        const flat = [];
+        itemsByParent.forEach((items) => {
+          // For parent items (no parentItemId) without variants
+          const parentItem = items.find((it) => !it.parentItemId);
+          if (parentItem && (!parentItem.variants || parentItem.variants.length === 0)) {
+            flat.push({
+              ...parentItem,
+              id: parentItem._id,
+              parentId: parentItem._id,
+              parentItemId: parentItem._id,
+              variantId: null,
+              itemName: parentItem.itemName,
+              itemCode: parentItem.itemCode || "",
+              barcodes: parentItem.barcodes || [],
+              mrp: parentItem.mrp || 0,
+              purchasePrice: parentItem.purchasePrice || 0,
+              salesPrice: parentItem.salesPrice || 0,
+              expiryDate: parentItem.expiryDate || null,
+              warehouseId: parentItem.warehouse?._id || parentItem.warehouse || null,
+            });
+          }
+    
+          // For variants, select the latest one based on createdAt
+          const variants = items.filter((it) => it.parentItemId);
+          if (variants.length > 0) {
+            // Sort by createdAt (descending) to get the latest variant
+            const latestVariant = variants.sort((a, b) => {
+              const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+              const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+              return dateB - dateA || b._id.localeCompare(a._id); // Fallback to _id if dates are equal
+            })[0];
+            flat.push({
+              ...latestVariant,
+              id: latestVariant.parentItemId,
+              parentItemId: latestVariant.parentItemId,
+              parentId: latestVariant.parentItemId,
+              variantId: latestVariant._id,
+              itemName: `${latestVariant.itemName} / ${latestVariant.variantName || "Variant"}`,
+              itemCode: latestVariant.itemCode || "",
+              barcodes: latestVariant.barcodes || [],
+              mrp: latestVariant.mrp || 0,
+              purchasePrice: latestVariant.purchasePrice || 0,
+              salesPrice: latestVariant.salesPrice || 0,
+              expiryDate: latestVariant.expiryDate || null,
+              warehouseId: latestVariant.warehouse?._id || latestVariant.warehouse || null,
+            });
+          }
+        });
+
+        
         
      
-      const rawItems = data.data || [] ;
-        console.log("rawItems", rawItems);
-        const flatItems = rawItems
-          .filter((it) => it._id && it.warehouse?._id)
-          .map((it) => {
-            const isVariant = Boolean(it.parentItemId);
-            return {
-              ...it,
-              parentId: isVariant ? it.parentItemId : it._id,
-              variantId: isVariant ? it._id : null,
-              itemName: isVariant ? `${it.itemName} / ${it.variantName || "Variant"}` : it.itemName,
-              barcode: it.barcode || "",
-              barcodes: it.barcodes || [],
-              itemCode: it.itemCode || "",
-            };
-          });
-         console.log("fetchItems called with warehouse:", sWarehouse);
-
-         console.log("flatItems", flatItems);
-         console.log(itemScan)
-          setAllItems(flatItems);
+      // const rawItems = data.data || [] ;
+      //        console.log(rawItems)
+      //   const flatItems = rawItems
+      //     .filter((it) => it._id && it.warehouse?._id)
+      //     .map((it) => {
+      //       const isVariant = Boolean(it.parentItemId);
+      //       return {
+      //         ...it,
+      //         parentId: isVariant ? it.parentItemId : it._id,
+      //         variantId: isVariant ? it._id : null,
+      //         itemName: isVariant ? `${it.itemName} / ${it.variantName || "Variant"}` : it.itemName,
+      //         barcode: it.barcode || "",
+      //         barcodes: it.barcodes || [],
+      //         itemCode: it.itemCode || "",
+      //       };
+      //     });
+        console.log(flat)
+          setAllItems(flat);
         
       } catch (err) {
         console.error("Fetch items error:", err.message);
@@ -782,14 +843,14 @@ const addItem = (it) => {
     console.error("Invalid item, missing parentId:", it);
     return;
   }
-
-  const parentId = it.parentId;
+console.log("it",it)
+  const parentId = it._id;
   const variantId = it.variantId || null;
 
   const existingIndex = formData.items.findIndex(
-    (item) => item.item === parentId && item.variant === variantId
+    (item) => item._id === it._id && item.variant === variantId
   );
-
+     console.log("existingIndex",existingIndex)
   const getDiscountAmount = (item) => {
     if (!item.discount) return 0;
     return item.discountType?.toLowerCase() === "percentage"
@@ -824,8 +885,9 @@ const addItem = (it) => {
     const totalAmount = (it.mrp || 0) ;
 
     const newItem = {
+      _id:it._id,
       purchasePrice:it.purchasePrice ||0,
-       item: it.parentId,
+       item: it.id,
       variant: it.variantId || null,
       itemName: it.itemName,
       itemCode: it.itemCode || "",
@@ -884,11 +946,11 @@ const addItemsInBatch = (matchedItems) => {
         return;
       }
 
-      const parentId = it.parentId;
+      const parentId = it.id;
       const variantId = it.variantId || null;
 
       const existingIndex = updatedItems.findIndex(
-        (item) => item.item === parentId && item.variant === variantId
+        (item) => item._id === it._id && item.variant === variantId
       );
 
       if (existingIndex !== -1) {
@@ -906,7 +968,7 @@ const addItemsInBatch = (matchedItems) => {
           totalAmount,
         };
 
-        playSound("/sounds/item-exists.mp3");
+        // playSound("/sounds/item-exists.mp3");
       } else {
         const discountAmount = getDiscountAmount(it);
         const totalAmount = (it.mrp || 0) ;
@@ -931,10 +993,11 @@ const addItemsInBatch = (matchedItems) => {
           mrp: it.mrp || 0,
           expiryDate: it.expiryDate || null,
           totalAmount,
+          _id:it._id
         };
 
         updatedItems.unshift(newItem);
-        playSound("/sounds/item-added.mp3");
+        // playSound("/sounds/item-added.mp3");
       }
     });
 

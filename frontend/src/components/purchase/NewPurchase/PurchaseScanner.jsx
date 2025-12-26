@@ -16,7 +16,9 @@ const PurchaseScanner = ({ allItems, addItem, setItemScan, addItemsInBatch }) =>
   const isScanningRef = useRef(false);
   const lastScannedRef = useRef({ value: "", timestamp: 0 });
   const navigate = useNavigate();
-  
+  const [multiMatchItems, setMultiMatchItems] = useState([]);
+const [showMultiSelect, setShowMultiSelect] = useState(false);
+
   // Hardware back button handler
     useEffect(() => {
       const backHandler = App.addListener('backButton', () => {
@@ -86,13 +88,25 @@ const PurchaseScanner = ({ allItems, addItem, setItemScan, addItemsInBatch }) =>
     isScanningRef.current = true;
     lastScannedRef.current = { value: decodedText, timestamp: now };
 
-    
-    const match = allItems.find(
+    const m = allItems.filter(
       (it) =>
         it.barcodes?.includes(decodedText) ||
         it.barcode === decodedText ||
         it.itemCode === decodedText
     );
+          console.log(m)
+    
+          if (m.length > 1) {
+          
+            playSound("/sounds/short-beep-tone-47916.mp3")
+            setMultiMatchItems(m);
+            setShowMultiSelect(true);
+            isScanningRef.current = false; // allow next scan after choosing
+            return;
+          }
+          
+    
+          const match = m[0]
 
     if (match) {
       setMatchedItems(prevItems => {
@@ -218,6 +232,55 @@ const PurchaseScanner = ({ allItems, addItem, setItemScan, addItemsInBatch }) =>
     setItemScan(false);
   };
 
+  
+  // useEffect(()=>{handleScanSuccess("IT/2025/0000009")},[])
+
+  const handleMultiSelectItem = (selected) => {
+    setShowMultiSelect(false);
+    setMultiMatchItems([]);
+  
+    // Continue your normal code
+    setMatchedItems(prevItems => {
+      const existingIndex = prevItems.findIndex(item => item.item === selected._id);
+  
+      let updatedItems;
+      if (existingIndex !== -1) {
+        const currentItem = prevItems[existingIndex];
+        const stockQty = currentItem.currentStock || currentItem.stock || 0;
+  
+        if (currentItem.quantity >= stockQty) {
+          alert("No more stock available for this item.");
+          return prevItems;
+        }
+  
+        updatedItems = [...prevItems];
+        updatedItems[existingIndex] = {
+          ...currentItem,
+          quantity: currentItem.quantity + 1,
+          subtotal: (currentItem.quantity + 1)* currentItem.salesPrice,
+        };
+  
+        playSound("/sounds/item-exists.mp3");
+  
+      } else {
+        const newItem = {
+          ...selected,
+          quantity: 1,
+        item: selected._id,
+        subtotal: selected.salesPrice * 1,
+        stock: selected.currentStock || 0,
+        };
+  
+        updatedItems = [ newItem, ...prevItems ];
+        playSound("/sounds/item-added.mp3");
+      }
+  
+      return (updatedItems);
+    });
+  
+    isScanningRef.current = false; // enable next scan
+  };
+
   return (
   <div className="relative flex flex-col h-screen">
       {/* Scanner View */}
@@ -332,6 +395,44 @@ const PurchaseScanner = ({ allItems, addItem, setItemScan, addItemsInBatch }) =>
   )}
      </div>
 
+     {showMultiSelect && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="bg-white w-[90%] max-w-md p-5 rounded-xl shadow-xl">
+      
+      <h2 className="mb-3 text-lg font-bold">Multiple Matches Found</h2>
+      <p className="mb-3 text-sm text-gray-600">
+        Select the correct item for barcode:
+      </p>
+
+      <div className="space-y-2 max-h-[250px] overflow-y-auto">
+        {multiMatchItems.map(it => (
+          <button
+            key={it._id}
+            onClick={() => handleMultiSelectItem(it)}
+            className="w-full p-3 text-left border rounded-lg hover:bg-gray-100"
+          >
+            <div className="font-semibold">{it.itemName}</div>
+            <div className="text-xs text-gray-500">{it.description}</div>
+            <div className="text-xs text-blue-600">
+  Barcode: {it.barcodes?.join(", ") || it.barcode || "-"}
+</div>
+<div className="text-xs text-blue-600">
+  Price: {it.salesPrice}
+</div>
+
+          </button>
+        ))}
+      </div>
+
+      <button
+        className="w-full py-2 mt-4 text-white bg-red-500 rounded-lg"
+        onClick={() => setShowMultiSelect(false)}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
 
       {/* Save Button */}
      <div className="fixed bottom-0 left-0 right-0 p-4 bg-opacity-90">

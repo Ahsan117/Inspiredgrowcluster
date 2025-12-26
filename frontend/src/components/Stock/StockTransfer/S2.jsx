@@ -1,4 +1,4 @@
-import { CameraIcon } from '@heroicons/react/outline';
+
 import React,{useState,useEffect,useRef} from 'react'
 import {
   FaArrowLeft,
@@ -13,7 +13,9 @@ import { App } from "@capacitor/app";
 import { useLocation,useNavigate } from 'react-router-dom'
 import Swal from "sweetalert2"
 import { Keyboard } from '@capacitor/keyboard';
-import { all } from 'axios';
+
+
+import playSound from "../../../utility/sound";
 export default function S2({
      searchQuery,handleAddItemsBatch,
   setSearchQuery,secondItems,secondWarehouseName,
@@ -22,7 +24,7 @@ export default function S2({
   formData,
   filteredItems,
   selectedItems,setSelectedItems,
-  handleItemChange,
+ 
   handleRemoveItem,setActiveTab,
   handleItemInfo,scanning,startScanner,stopScanner,
   matchedItems,videoRef,setMatchedItems,codeReaderRef,addItem,setScanning,st
@@ -76,17 +78,24 @@ export default function S2({
     
   
         const[itemScan,setItemScan]=useState(false)
-const handleQuanity = (id, type) => {
+
+        
+const handleQuanity = (id, variant , type) => {
   // Handle item removal
   if (type === "remove") {
-    const filtered = selectedItems.filter(item => item.item !== id);
+    console.log(variant)
+    const filtered = selectedItems.filter(it => !(it.item === id && it.variant === variant));
     setSelectedItems(filtered);
     return;
   }
 
   const updatedItems = selectedItems.map(item => {
-    if (item.item !== id) return item;
+    // console.log(item) 
+    console.log(id)
+    console.log(variant)
+    if (!(item.item == id && item.variant == variant)) return item;
 
+    console.log(item)
     let newQty = item.quantity;
 
     if (type === "plus") {
@@ -186,22 +195,32 @@ useEffect(() => {
          onFocus={(e) => {
     e.target.focus(); // ensure input is focused
     setTimeout(() => {
-      Keyboard.show(); // explicitly show the keyboard
+      // Keyboard.show(); // explicitly show the keyboard
     }, 100); // short delay helps trigger keyboard on some Androids
   }}
   
         onChange={(e) => {
         const val = e.target.value;
         setSearchQuery(val);
+        if(val =="" || val == " ") return ;
+        
+        const trimmed = val.trim();
+        const hit = allItems.find(i => i.barcodes?.includes(trimmed) || i.itemCode==trimmed );
+       console.log(hit)
+        if(hit?.variantId) playSound("/sounds/beep-6-96243.mp3")
       }}
       onKeyDown={(e) => {
         // e.preventDefault();
         if (e.key === "Enter" ) {
           e.preventDefault();
+          
+          if(filteredItems.length >1) return;
+          
           if(filteredItems[0]){
             addItem(filteredItems[0]);
             setSearchQuery("");
           }
+          
         }
       }}
         className="flex-grow text-sm placeholder-gray-400 bg-transparent focus:outline-none"
@@ -265,13 +284,12 @@ useEffect(() => {
   {/* Selected Items */}
   <div className="mt-4 space-y-4">
     {selectedItems?.map((item, index) => {
-      console.log(allItems)
-      console.log("Selected Item ID:", item.item._id);
+     
       const itemId = item.item && typeof item.item === "object" ? item.item._id : item.item;
-const it = allItems.find(i => i._id === itemId);
-
-      console.log("Selected Item:", it);
-      console.log("Item Quantity:", item);
+      console.log("K",item)
+const it = allItems.find(i => (i._id == itemId && i.variantId == item.variant));
+ console.log(it)
+      
       return (
          <div
                     key={it._id}
@@ -319,7 +337,7 @@ const it = allItems.find(i => i._id === itemId);
         
                           <div className="flex items-center gap-2 bg-gray-100/70 rounded-full p-0.5">
                             <button type="button"
-                              onClick={() => handleQuanity(it._id, "minus")}
+                              onClick={() => handleQuanity(it._id, item.variant ,"minus")}
                               className="p-1.5 text-gray-600 hover:text-purple-600 rounded-full active:bg-gray-200 transition-colors"
                               disabled={item?.quantity <= 0}
                             >
@@ -335,12 +353,12 @@ const it = allItems.find(i => i._id === itemId);
   value={item.quantity}
   onChange={(e) => {
     const val = (Number(e.target.value));
-    handleQuanity(it._id, val);
+    handleQuanity(it._id, item.variant ,val);
   }}
   className="w-12 text-sm font-medium text-center text-gray-800 bg-transparent border-none focus:ring-0 focus:outline-none"
 />
                             <button type="button"
-                              onClick={() => handleQuanity(it._id, "plus")}
+                              onClick={() => handleQuanity(it._id, item.variant , "plus")}
                               className="p-1.5 text-gray-600 hover:text-purple-600 rounded-full active:bg-gray-200 transition-colors"
                               disabled={it?.currentStock <= item?.quantity}
                             >
@@ -349,7 +367,7 @@ const it = allItems.find(i => i._id === itemId);
                           </div>
                           <div className="flex justify-end mt-3">
   <button type="button"
-    onClick={() => handleQuanity(it?._id, "remove")}
+    onClick={() => handleQuanity(it?._id, item.variant , "remove")}
     className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-600 rounded-full bg-red-50 hover:bg-red-100"
   >
     <FaTrashAlt className="w-4 h-4" />

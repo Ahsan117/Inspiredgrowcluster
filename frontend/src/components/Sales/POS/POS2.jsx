@@ -14,6 +14,7 @@ import { useLocation,useNavigate } from 'react-router-dom'
 import MinimalOfferView from "./OfferView";
 import { add } from "date-fns";
 import { Keyboard } from '@capacitor/keyboard';
+import playSound from "../../../utility/sound";
 export default function POS2({
   searchItemCode,
   setSearchItemCode,
@@ -76,18 +77,20 @@ confirmBack();
   const[itemScan,setItemScan]=useState(false)
 
 
- const handleQuanity = (id, type) => {
+ const handleQuanity = (id, variant,type) => {
  
  
   if (type === "remove") {
-    const filtered = items.filter((it) => it.item !== id);
+    console.log(variant)
+    const filtered = items.filter((it) => !(it.item === id && it.variant === variant));
+
     const withOffer = applyOfferLogic(filtered);
     setItems(withOffer);
     return;
   }
 
   const updated = items.map((item) => {
-    if (item.item === id) {
+    if (item.item == id && item.variant == variant) {
       let newQty = item.quantity;
       
       if (type === "plus") {
@@ -228,6 +231,12 @@ const lastScanRef = useRef({ code: null, time: 0 });
        onChange={(e) => {
         const val = e.target.value;
         setSearchItemCode(val);
+        if(val =="" || val == " ") return ;
+        
+        const trimmed = val.trim();
+        const hit = allItems.find(i => i.barcodes?.includes(trimmed) || i.itemCode==trimmed );
+       console.log(hit)
+        if(hit?.variantId) playSound("./assets/sounds/beep-6-96243.mp3")
       }}
 
 
@@ -235,11 +244,15 @@ const lastScanRef = useRef({ code: null, time: 0 });
       onKeyDown={(e) => {
         if (e.key === "Enter") {
       e.preventDefault();
-      const trimmed = searchItemCode.trim();
-      console.log("Bargun input (Enter):", trimmed); // Debug log
 
       
-      const hit = allItems.find(i => i.barcodes?.includes(trimmed));
+      const trimmed = searchItemCode.trim();
+      console.log("Bargun input (Enter):", trimmed); // Debug log
+      const hit = allItems.find(i => i.barcodes?.includes(trimmed) || i.itemCode==trimmed );
+       
+      if(filteredItems.length >1) return ;
+
+      
       if (hit) {
         console.log("Matched item:", hit.itemName, hit._id); // Debug log
         addItem(hit);
@@ -337,9 +350,9 @@ const lastScanRef = useRef({ code: null, time: 0 });
     {/* Modern Card Design with Hover Effects */}
     <div className="grid gap-3">
       {items.map((item,idx) => {
-        const it = allItems.find(i => i._id === item.item);
+           console.log("it",item)
         
-        console.log(it);
+        
         return (
           <div
             key={item.item}
@@ -404,7 +417,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
   
   onChange={(e) => {
     const val = (Number(e.target.value));
-    handleQuanity(item.item, val);
+    handleQuanity(item.item, item.variant,val);
   }}
   className="w-12 text-sm font-medium text-center text-gray-800 bg-transparent border-none focus:ring-0 focus:outline-none"
 />
@@ -423,7 +436,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
                   
                   <div className="flex items-start justify-between mt-3">
   <button
-    onClick={() => handleQuanity(item.item, "remove")}
+    onClick={() => handleQuanity(item.item, item.variant , "remove")}
     className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-600 rounded-full bg-red-50 hover:bg-red-100"
   >
     <FaTrashAlt className="w-4 h-4" />

@@ -109,6 +109,9 @@ export default function POSM() {
   const [location, setLocation] = useState(null);
   const {posData,loadPOSData}=useContext(POSContext);
   const [editId, setEditId] = useState(null);
+  const [customerModel, setCustomerModel] = useState("CustomerData");
+  const[bookingId,setBookingId]=useState("")
+  const [selectedCustomer, setSelectedCustomer] = useState("");
 let watchId=""
   
   
@@ -147,6 +150,10 @@ let watchId=""
       };
       request();
       setEditId(params.get("id") || null);
+      setBookingId(params.get("bookingId"));
+      setSelectedCustomer(params.get("customer"))
+      console.log(params.get("customerModel"))
+      setCustomerModel(params.get("customerModel") || "CustomerData")
     }, []);
   const navigate = useNavigate();
  const[activeTab,setActiveTab]=useState("pos1")
@@ -161,7 +168,7 @@ let watchId=""
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
  const[additionalCharges,setAdditionalCharges]=useState(0)
   const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState("");
+  
 
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -198,7 +205,7 @@ let watchId=""
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMode, setPaymentMode] = useState(""); // "cash" | "bank" | "multiple" | "hold"
   const [orderPaymentMode, setOrderPaymentMode] = useState(""); // Tracks payment mode of loaded order
-
+  
   const [storeName, setStoreName] = useState("");
   const [orderToEdit, setOrderToEdit] = useState(null);
   const [defaultWarehouse, setDefaultWarehouse]   = useState("");
@@ -300,7 +307,7 @@ useEffect(() => {
       
       setSelectedWarehouse(localStorage.getItem("deafultWarehouse") || null);
     }
-  }, [editId]);
+  }, [editId,customerModel]);
 
   
   useEffect(() => {
@@ -319,9 +326,10 @@ useEffect(() => {
   }
 
   try {
+    console.log("asdfg",customerModel)
     const [wareRes, custRes, accRes, payRes, termRes] = await Promise.all([
       axios.get(`${link}/api/warehouses?scope=mine`, authHeaders()),
-      axios.get(`${link}/api/customer-data/all`, authHeaders()),
+      axios.get(`${link}${customerModel=="Customer"?"/customer/customers":"/api/customer-data/all"}`, authHeaders()),
       axios.get(`${link}/api/accounts`, authHeaders()),
       axios.get(`${link}/api/payment-types`, authHeaders()),
       axios.get(`${link}/api/terminals`, authHeaders()),
@@ -329,13 +337,16 @@ useEffect(() => {
     console.log(wareRes,custRes,accRes,payRes,termRes)
     const lookups = {
       warehouses: wareRes.data.data || [],
-      customers: custRes.data || [],
+      customers: Array.isArray(custRes.data)
+      ? custRes.data
+      : custRes.data?.data || [],
+    
       accounts: accRes.data.data || [],
       paymentTypes: payRes.data.data || [],
       terminals: termRes.data.data || [],
     };
-    if (!editId && lookups.customers.length) { // find or default to the first customer
-      const walkIn = lookups.customers.find(c => c.customerName.toLowerCase() === "walk-in customer");
+    if (!editId && lookups.customers.length && customerModel=="CustomerData") { // find or default to the first customer
+      const walkIn = lookups.customers.find(c => (c.customerName? c.customerName : c.name)?.toLowerCase() === "walk-in customer");
       setSelectedCustomer((walkIn?._id) || lookups.customers [0]._id);
     }
     console.log(lookups)
@@ -376,6 +387,7 @@ useEffect(() => {
       .filter(it => it._id && it.warehouse?._id)
       .map(it => {
         const isVariant = Boolean(it.parentItemId);
+        console.log(it)
         return {
           ...it,
           parentId:   isVariant ? it.parentItemId : it._id,
@@ -753,7 +765,7 @@ async function addItem(it) {
     const newQty = existing.quantity + quantityToAdd;
 
     if (newQty <= existing.currentStock) {
-      playSound("/sounds/item-exists.mp3");
+      playSound("./assets/sounds/item-exists.mp3");
       updated[existingIdx] = {
         ...existing,
         quantity: newQty,
@@ -769,7 +781,7 @@ async function addItem(it) {
     setSearchItemCode("");
     return;
   } else {
-    playSound("/sounds/item-added.mp3");
+    playSound("./assets/sounds/item-added.mp3");
     const newItem = {
       barcode: it.barcode || "",
       barcodes: it.barcodes || [],
@@ -862,7 +874,7 @@ async function addItemsInBatch(matchedItems) {
       const newQty = existing.quantity + quantityToAdd;
 
       if (newQty <= existing.currentStock) {
-        playSound("/sounds/item-exists.mp3");
+        playSound("./assets/sounds/item-exists.mp3");
         updated[existingIdx] = {
           ...existing,
           quantity: newQty,
@@ -871,7 +883,7 @@ async function addItemsInBatch(matchedItems) {
       }
       continue;
     } else {
-      playSound("/sounds/item-added.mp3");
+      playSound("./assets/sounds/item-added.mp3");
       const newItem = {
         description: it.description || "",
         offer:it.offer ,
@@ -1159,8 +1171,10 @@ async function updateItem(idx, field, val) {
       location:l,
       warehouse: selectedWarehouse,
       customer: selectedCustomer,
+      customerModel,
       account: selectedAccount,
       items: validItems,
+      ...(bookingId!=""?{booking:bookingId}:{}),
       additionalCharges: additionalCharges,
       additionalPayment: additionalPaymentAmount,
       exclusiveDiscount: exclusiveDiscount,
@@ -1174,6 +1188,7 @@ async function updateItem(idx, field, val) {
       previousBalance,
       adjustAdvancePayment,
       advancePaymentAmount,
+      
     };
 
     console.log("Generated payload:", payload);

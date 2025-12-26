@@ -6,7 +6,6 @@ import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 
 function Mybooking() {
-  const link="https://pos.inspiredgrow.in/vps"
   const [searchQuery, setSearchQuery] = useState('');
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -45,11 +44,12 @@ function Mybooking() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${link}/api/booking-orders`, {
+      const response = await fetch('https://pos.inspiredgow.in/vps/api/booking-orders', {
         headers: { 'x-api-key': API_KEY },
       });
       if (!response.ok) throw new Error('Failed to fetch orders');
       const data = await response.json();
+      console.log(data)
       setOrders(data || []);
       setFilteredOrders(data || []);
       localStorage.setItem('bookingOrders', JSON.stringify(data || []));
@@ -103,7 +103,7 @@ function Mybooking() {
         contactNumber: editValues.contactNumber
       };
 
-      const response = await fetch(`${link}/api/booking-orders/${orderId}`, {
+      const response = await fetch(`https://pos.inspiredgrow.in/vps/api/booking-orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'x-api-key': API_KEY,

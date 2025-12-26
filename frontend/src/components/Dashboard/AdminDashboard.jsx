@@ -66,11 +66,12 @@ const Dashboard = () => {
     const [showModal, setShowModal] = useState(false);
     const [sa, setSa] = useState(null);
   const userRole = (localStorage.getItem("role") || "guest").toLowerCase();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole =="store admin" || userRole === "admin";
 
 
 
-
+ 
+  
    useEffect(() => {
     const storedPermissions = localStorage.getItem("permissions");
     if (storedPermissions) {
@@ -120,40 +121,40 @@ const Dashboard = () => {
 
 
   
-  const fetchRecentlyAdded = async () => {
-    try {
-      const response = await axios.get(
-        `${link}/api/items/summary`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          }
-        }
-      );
-      setItems(response.data.data); 
-    } catch (err) {
-      console.log(err.message);
-    } 
-  };
+  // const fetchRecentlyAdded = async () => {
+  //   try {
+  //     const response = await axios.get(
+  //       `${link}/api/items/summary`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem("token")}`,
+  //         }
+  //       }
+  //     );
+  //     setItems(response.data.data); 
+  //   } catch (err) {
+  //     console.log(err.message);
+  //   } 
+  // };
   
-  const fetchStockAlert = async () => {
-    try {
-      const response = await axios.get(
-        `${link}/api/items/low-stock?threshold=10`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          }
-        }
-      );
-      // Replace with actual API URL
+  // const fetchStockAlert = async () => {
+  //   try {
+  //     const response = await axios.get(
+  //       `${link}/api/items/low-stock?threshold=10`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem("token")}`,
+  //         }
+  //       }
+  //     );
+  //     // Replace with actual API URL
       
-      // console.log(response.data)
-      setLowStock(response.data.data); 
-    } catch (err) {
-      console.log(err.message);
-    } 
-  };
+  //     // console.log(response.data)
+  //     setLowStock(response.data.data); 
+  //   } catch (err) {
+  //     console.log(err.message);
+  //   } 
+  // };
   
 
   const fetchSale = async () => {
@@ -254,60 +255,60 @@ const indexOfFirstItem = indexOfLastItem - entriesPerPage;
 const totalPages = Math.ceil(filteredData.length / entriesPerPage);
 
 // Get current page's items
-const currentUsers = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+// const currentUsers = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
 // Handle page change
-const handlePageChange = (newPage) => {
-  if (newPage >= 1 && newPage <= totalPages) {
-    setCurrentPage(newPage);
-  }
-};
+// const handlePageChange = (newPage) => {
+//   if (newPage >= 1 && newPage <= totalPages) {
+//     setCurrentPage(newPage);
+//   }
+// };
 
 // Handle change in entries per page dropdown/input
-const handleEntriesChange = (e) => {
-  setEntriesPerPage(Number(e.target.value));
-  setCurrentPage(1); // Reset to first page when entries per page changes
-};
+// const handleEntriesChange = (e) => {
+//   setEntriesPerPage(Number(e.target.value));
+//   setCurrentPage(1); // Reset to first page when entries per page changes
+// };
 
 
-    const handleCopy = () => {
-        const data = currentPage.map(item => `${item.itemName}, ${item.category?.name}, ${item.brand?.brnadName}`).join('\n');
-        navigator.clipboard.writeText(data);
-        alert("Data copied to clipboard!");
-    };
+    // const handleCopy = () => {
+    //     const data = currentPage.map(item => `${item.itemName}, ${item.category?.name}, ${item.brand?.brnadName}`).join('\n');
+    //     navigator.clipboard.writeText(data);
+    //     alert("Data copied to clipboard!");
+    // };
 
-    const handleExcelDownload = () => {
-        const ws = XLSX.utils.json_to_sheet(lowStock);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "LowStock");
-        XLSX.writeFile(wb, "low_stock.xlsx");
-    };
+    // const handleExcelDownload = () => {
+    //     const ws = XLSX.utils.json_to_sheet(lowStock);
+    //     const wb = XLSX.utils.book_new();
+    //     XLSX.utils.book_append_sheet(wb, ws, "LowStock");
+    //     XLSX.writeFile(wb, "low_stock.xlsx");
+    // };
 
-    const handlePdfDownload = () => {
-        const doc = new jsPDF();
-        doc.text("Low Stock List", 20, 20);
-        const tableData = lowStock.map((item,index) => [index+1,item.itemName, item.category?.name, item.brand?.brandName]);
-        autoTable(doc, {
-            head: [['#','Item Name','Category Name','Brand Name']],
-            body: tableData,
-        });
-        doc.save('lowStock.pdf');
-    };
+    // const handlePdfDownload = () => {
+    //     const doc = new jsPDF();
+    //     doc.text("Low Stock List", 20, 20);
+    //     const tableData = lowStock.map((item,index) => [index+1,item.itemName, item.category?.name, item.brand?.brandName]);
+    //     autoTable(doc, {
+    //         head: [['#','Item Name','Category Name','Brand Name']],
+    //         body: tableData,
+    //     });
+    //     doc.save('lowStock.pdf');
+    // };
 
-    const handlePrint = () => {
-        window.print();
-    };
+    // const handlePrint = () => {
+    //     window.print();
+    // };
 
-    const handleCsvDownload = () => {
-        const csvContent = "data:text/csv;charset=utf-8," + lowStock.map(item => Object.values(item).join(",")).join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "low_stock.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    // const handleCsvDownload = () => {
+    //     const csvContent = "data:text/csv;charset=utf-8," + lowStock.map(item => Object.values(item).join(",")).join("\n");
+    //     const encodedUri = encodeURI(csvContent);
+    //     const link = document.createElement("a");
+    //     link.setAttribute("href", encodedUri);
+    //     link.setAttribute("download", "low_stock.csv");
+    //     document.body.appendChild(link);
+    //     link.click();
+    //     document.body.removeChild(link);
+    // };
 
 
     useEffect(()=>{
@@ -826,7 +827,78 @@ if(print) return <Print print={print} setPrint={setPrint} setDevice={setDevice}/
     </button>
     )
     }
+
+    {
+      
+    }
   </div>
+
+
+
+
+  <div className="flex gap-3 mb-4 ">
+    {
+       (isAdmin || hasPermissionFor("Bookings", "View")) &&(
+        <button
+       onClick={() => navigate('/van/bookings')}
+      className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105"
+    >
+      Van Booking List
+    </button>
+      )
+    }
+   {
+     
+       <button
+     onClick={() => navigate('/rider/claim')}
+      className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-pink-500 to-red-500 hover:scale-105"
+    >
+       Rider Claim
+    </button>
+    
+   }
+   
+  </div>
+
+  
+  <div className="flex gap-3 mb-4 ">
+    {
+      (
+        <button
+       onClick={() => navigate('/order/view/van-assigned')}
+      className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105"
+    >
+      Van Assigned Order
+    </button>
+      )
+    }
+   {/* {
+    (
+       <button
+     onClick={() => navigate('/order/view/rider-assigned')}
+      className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-pink-500 to-red-500 hover:scale-105"
+    >
+       Rider Assigned Order
+    </button>
+    )
+   } */}
+   
+  </div>
+  <div className="flex gap-3 mb-4 ">
+    {
+      isAdmin &&(
+        <button
+       onClick={() => navigate('/order/view')}
+      className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105"
+    >
+       Order List 
+    </button>
+      )
+    } 
+  </div>
+
+
+  
 
   {/* Metric Cards Grid */}
   <div className="grid grid-cols-2 gap-3">

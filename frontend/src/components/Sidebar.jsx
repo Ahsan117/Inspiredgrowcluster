@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Transition } from '@headlessui/react';
 import { MdAddAlarm } from 'react-icons/md';
 import { MdViewList } from 'react-icons/md';
+import axios from "axios";
 import {
-  FaHome,
+  FaHome,FaTruck,FaBell,FaCheck,
   FaAddressBook,
   FaUserPlus,
   FaUsers,
@@ -63,6 +64,7 @@ const Sidebar = ({ isSidebarOpen }) => {
     item: false,
     stock: false,
     expense: false,
+    delivVanbooking: false,
     warehouse: false,
     settings: false,
     help:false,
@@ -74,8 +76,36 @@ const Sidebar = ({ isSidebarOpen }) => {
     salesLocation:false,
   });
   const [localPermissions, setLocalPermissions] = useState([]);
-
-
+  const [vanNotifCount, setVanNotifCount] = useState(0);
+  const api = axios.create({ baseURL: 'https://pos.inspiredgrow.in/vps/api' });
+api.interceptors.request.use(cfg => {
+  const t = localStorage.getItem('token');
+  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  return cfg;
+}, err => Promise.reject(err));
+  useEffect(() => {
+    const fetchVanNotifications = async () => {
+      try {
+        const res = await api.get('/bookings/bell');
+        const count = res?.data?.data?.count ?? 0;
+        setVanNotifCount(count);
+      } catch (err) {
+        console.error('Failed to fetch van notifications', err?.message || err);
+        // optional: handle 401
+        if (err.response?.status === 401) {
+          // token invalid/expired — clear and redirect to login
+          localStorage.removeItem('token');
+          // if you have useNavigate:
+          // navigate('/login');
+        }
+      }
+    };
+  
+    fetchVanNotifications();
+    const id = setInterval(fetchVanNotifications, 60000);
+    return () => clearInterval(id);
+  }, []);
+  
   
   const handleDropdownToggle = (section) => {
     setDropdowns((prev) => {
@@ -89,7 +119,7 @@ const Sidebar = ({ isSidebarOpen }) => {
   
   
   const userRole = (localStorage.getItem("role") || "guest").toLowerCase();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "store admin";
 
   useEffect(() => {
     const storedPermissions = localStorage.getItem("permissions");
@@ -130,7 +160,7 @@ const Sidebar = ({ isSidebarOpen }) => {
     "settings",
     "help",
     "deliverySlot",
-    "printer"
+    "printer","stock"
   ];
 
 
@@ -526,7 +556,7 @@ const Sidebar = ({ isSidebarOpen }) => {
               leaveTo="transform opacity-0 -translate-y-2"
             >
               <ul className="pl-4">
-                {hasPermissionFor("order", "View") && (
+                {(isAdmin) && (
                   <li
                     className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
                     onClick={() => navigate("/order/view")}
@@ -761,6 +791,105 @@ const Sidebar = ({ isSidebarOpen }) => {
             </Transition>
           </li>
         )}
+
+
+        
+
+{(isAdmin ? adminVisibleSections.includes("sales") : hasPermissionFor("Sales", "View")) && (
+              
+              <li
+              className=""
+             
+            >
+              <div
+              className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
+              onClick={() => handleDropdownToggle("delivVanbooking")}
+            >
+                
+              <div className="flex items-center space-x-2">
+                <FaTruck />
+                <span>Delivery Van Booking</span>
+              </div>
+              {dropdowns.delivVanbooking ? <FaAngleUp /> : <FaAngleDown />}
+              </div>
+            
+            <Transition
+              show={dropdowns.delivVanbooking}
+              enter="transition-all duration-300 ease-out"
+              enterFrom="transform opacity-0 -translate-y-2"
+              enterTo="transform opacity-100 translate-y-0"
+              leave="transition-all duration-300 ease-in"
+              leaveFrom="transform opacity-100 translate-y-0"
+              leaveTo="transform opacity-0 -translate-y-2"
+            >
+              <ul className="pl-4 ">
+                {/* Van Booking List only for users with Bookings:View */}
+                {(isAdmin || hasPermissionFor("Bookings", "View")) && (
+                  <li
+                    className="flex items-center justify-between p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
+                    // clicking the whole row opens the page & dropdown
+                    onClick={() => {
+                      // open only the delivVanbooking dropdown
+                      setDropdowns(prev => {
+                        const updated = {};
+                        Object.keys(prev).forEach(key => { updated[key] = key === 'delivVanbooking'; });
+                        return updated;
+                      });
+                      navigate('/van/bookings');
+                    }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <FaList />
+                      <span>Van Booking List</span>
+                    </div>
+            
+                    {/* bell + badge */}
+                    <div className="relative flex items-center gap-3">
+                      <button
+                        title="Van booking notifications"
+                        onClick={(e) => {
+                          e.stopPropagation(); // prevent parent click
+                          setDropdowns(prev => {
+                            const updated = {};
+                            Object.keys(prev).forEach(key => { updated[key] = key === 'delivVanbooking'; });
+                            return updated;
+                          });
+                          navigate('/van/bookings');
+                        }}
+                        className="p-1 rounded-full hover:bg-gray-800 focus:outline-none"
+                      >
+                        <FaBell className="w-4 h-4" />
+                      </button>
+            
+                      {vanNotifCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-[2px] text-xs font-semibold leading-none text-white bg-red-600 rounded-full">
+                          {vanNotifCount > 99 ? '99+' : vanNotifCount}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                )}
+            
+                {/* Rider Claim is open to everyone who can see this panel */}
+                <li
+                  className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
+                  onClick={() => navigate('/rider/claim')}
+                >
+                  <FaCheck />
+                  <span>Rider Claim</span>
+                </li>
+                <li
+                  className="flex items-center p-2 space-x-2 text-sm cursor-pointer hover:bg-gray-700"
+                  onClick={() => navigate('/my-jobs')}
+                >
+                  <FaCheck />
+                  <span>My Claimed Jobs</span>
+                </li>
+              </ul>
+            </Transition>
+            </li>
+                 )}
+       
 
 
         {/* Banners Section */}
@@ -1399,6 +1528,53 @@ const Sidebar = ({ isSidebarOpen }) => {
           </li>
         )}
 
+
+
+{(isAdmin ? adminVisibleSections.includes("stock-transfer") : hasPermissionFor("stocktransfers", "View")) && (
+          <li>
+            <div
+              className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
+              onClick={() => handleDropdownToggle("stockTransfer")}
+            >
+              <div className="flex items-center space-x-2">
+                <FaCube />
+                <span>Stock</span>
+              </div>
+              {dropdowns.stockTransfer ? <FaAngleUp /> : <FaAngleDown />}
+            </div>
+            <Transition
+              show={dropdowns.stockTransfer}
+              enter="transition-all duration-300 ease-out"
+              enterFrom="transform opacity-0 -translate-y-2"
+              enterTo="transform opacity-100 translate-y-0"
+              leave="transition-all duration-300 ease-in"
+              leaveFrom="transform opacity-100 translate-y-0"
+              leaveTo="transform opacity-0 -translate-y-2"
+            >
+              <ul className="pl-4">
+                {hasPermissionFor("stocktransfers", "Add") && (
+                  <li
+                    className="flex items-center p-2 text-sm cursor-pointer hover:bg-gray-700"
+                    onClick={() => navigate("/stock-main")}
+                  >
+                    <FaListAlt />
+                    <span>Stock Transfer</span>
+                  </li>
+                )}
+                {hasPermissionFor("stocktransfers", "View") && (
+                  <li
+                    className="flex items-center p-2 text-sm cursor-pointer hover:bg-gray-700"
+                    onClick={() => navigate("/transfer-list")}
+                  >
+                    <FaFolderOpen />
+                    <span>Transfer List</span>
+                  </li>
+                )}
+              </ul>
+            </Transition>
+          </li>
+        )}
+
         {/* Stores Dropdown - Visible only to admin */}
         {isAdmin && adminVisibleSections.includes("store") && (
           <li>
@@ -1440,42 +1616,22 @@ const Sidebar = ({ isSidebarOpen }) => {
             </Transition>
           </li>
         )}
+        
  {/* Reports Dropdown */}
         {(isAdmin ? adminVisibleSections.includes("reports") : hasPermissionFor("report", "View")) && (
-          <li>
+        
             <div
               className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
-              onClick={() => handleDropdownToggle("reports")}
+              onClick={() => navigate("/reports-list")}
             >
               <div className="flex items-center space-x-2">
                 <FaChartBar />
                 <span>Reports</span>
               </div>
-              {dropdowns.reports ? <FaAngleUp /> : <FaAngleDown />}
+             
             </div>
-            <Transition
-              show={dropdowns.reports}
-              enter="transition-all duration-300 ease-out"
-              enterFrom="transform opacity-0 -translate-y-2"
-              enterTo="transform opacity-100 translate-y-0"
-              leave="transition-all duration-300 ease-in"
-              leaveFrom="transform opacity-100 translate-y-0"
-              leaveTo="transform opacity-0 -translate-y-2"
-            >
-              <ul className="pl-4">
-                {reportsList.map((report, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center p-2 text-sm cursor-pointer hover:bg-gray-700"
-                    onClick={() => navigate(report.path)}
-                  >
-                    <FaFileAlt />
-                    <span>{report.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </Transition>
-          </li>
+          
+          
         )}
 
         {/* Warehouse Dropdown */}
@@ -1647,6 +1803,7 @@ const Sidebar = ({ isSidebarOpen }) => {
           </Transition>
         </li>
         {/* Pending Deletion Requests (admin only) */}
+        
 {isAdmin && (
   <li>
     <div

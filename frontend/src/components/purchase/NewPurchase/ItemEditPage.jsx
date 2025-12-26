@@ -84,15 +84,15 @@ const hasPermissionFor = (module, action) => {
     items: updateditem, 
   }))
   
-    const res= await axios.put("https://pos.inspiredgrow.in/vps/api/items/updateFromPurchase",{
-      itemId:id,
-      ...form
-     },{
-      headers:{
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      }
-     })
-         console.log("Item updated successfully:", res.data);
+    // const res= await axios.put("https://pos.inspiredgrow.in/vps/api/items/updateFromPurchase",{
+    //   itemId:id,
+    //   ...form
+    //  },{
+    //   headers:{
+    //     Authorization: `Bearer ${localStorage.getItem("token")}`,
+    //   }
+    //  })
+    //      console.log("Item updated successfully:", res.data);
   setForm({
     expiryDate: '',
     mrp: 0,

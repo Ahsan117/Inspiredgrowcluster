@@ -23,7 +23,7 @@ const Summary = ({ label, value, isGrandTotal = false }) => (
 );
 
 // --- COMPONENT REFACTORED FOR BETTER MOBILE UX ---
-const ItemsList = ({editId,exclusiveDiscount, additionalCharges,items,couponCode,setCouponCode, updateItem, removeItem, setSelectedItem ,totalAmount ,totalDiscount,newNote,newAmount,additionalPaymentAmount,setAdditionalPaymentAmount,setNewNote,setNewAmount}) => (
+const ItemsList = ({editId,deliveryFee,processingFee,exclusiveDiscount, additionalCharges,items,couponCode,setCouponCode, updateItem, removeItem, setSelectedItem ,totalAmount ,totalDiscount,newNote,newAmount,additionalPaymentAmount,setAdditionalPaymentAmount,setNewNote,setNewAmount}) => (
   <section className="overflow-y-auto">
     <div className="divide-y divide-gray-200 ">
       {items.length === 0 ? (
@@ -99,8 +99,23 @@ const ItemsList = ({editId,exclusiveDiscount, additionalCharges,items,couponCode
       )}
     </div>
     
-          <Summary label="Subtotal" value={`₹${totalAmount.toFixed(2)}`} />
+    <Summary 
+  label="Subtotal" 
+  value={`₹${items.reduce((acc, it) => acc + it.subtotal, 0).toFixed(2)}`} 
+/>
+
           <Summary label="Discount" value={`- ₹${totalDiscount.toFixed(2)}`} />
+         
+         {
+          deliveryFee > 0 && (
+            <Summary label="DeliveryFee" value={`+ ₹${deliveryFee.toFixed(2)}`} />
+          )
+         } 
+         {
+            processingFee > 0 && (
+              <Summary label="HandlingFee" value={`+ ₹${processingFee.toFixed(2)}`} />
+            )
+         }
           {editId && <Summary label="Premium Membership Discount" value={`- ₹${exclusiveDiscount.toFixed(2)}`} />}
         {/* Additional Charges Section */}
 <div className="mt-3">
@@ -306,7 +321,7 @@ selectedCustomer, selectedWarehouse, exclusiveDiscount,editId,
   totalAmount, totalDiscount, couponCode, setCouponCode, isPaymentModalOpen, setIsPaymentModalOpen,
   PaymentModal, paymentMode, paymentTypes, accounts, terminals, buildPayload, selectedAccount,
   advancePaymentAmount, paymentSummary, sendOrder, currentOrderId, setAdvancePaymentAmount,
-  setSelectedAccount, setActiveTab, setAdjustAdvancePayment
+  setSelectedAccount, setActiveTab, setAdjustAdvancePayment,deliveryFee,processingFee
 }) {
   const [selectedItem, setSelectedItem] = useState(null);
  const [newNote, setNewNote] = useState("");
@@ -354,7 +369,7 @@ selectedCustomer, selectedWarehouse, exclusiveDiscount,editId,
         </section>
 
         {/* Items List */}
-        <ItemsList exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} items={items} setNewAmount={setNewAmount} setNewNote={setNewNote} newNote={newNote} newAmount={newAmount} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} couponCode={couponCode} setCouponCode={setCouponCode} totalAmount={totalAmount} totalDiscount={totalDiscount} updateItem={updateItem} removeItem={removeItem} setSelectedItem={setSelectedItem} />
+        <ItemsList deliveryFee={deliveryFee} processingFee={processingFee} exclusiveDiscount={exclusiveDiscount} editId={editId} additionalCharges={additionalCharges} items={items} setNewAmount={setNewAmount} setNewNote={setNewNote} newNote={newNote} newAmount={newAmount} additionalPaymentAmount={additionalPaymentAmount} setAdditionalPaymentAmount={setAdditionalPaymentAmount} couponCode={couponCode} setCouponCode={setCouponCode} totalAmount={totalAmount} totalDiscount={totalDiscount} updateItem={updateItem} removeItem={removeItem} setSelectedItem={setSelectedItem} />
 
       </main>
 

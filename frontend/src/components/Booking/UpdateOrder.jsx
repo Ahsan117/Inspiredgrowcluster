@@ -1,229 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import Navbar from '../Navbar';
-import Sidebar from '../Sidebar';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-const MybookingForm = () => {
-  const link="https://pos.inspiredgrow.in/vps"
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [formData, setFormData] = useState({
-    bookNumber: '',
-    bookingDate: '',
-    customerId: '',
-    contactNumber: '',
+const UpdateOrder = () => {
+  const [orderData, setOrderData] = useState({
+    status: '',
     location: '',
-    remark: ''
+    customerNumber: '',
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const navigate = useNavigate();
+  const { orderId } = useParams(); // Assuming you're using react-router to pass the order ID in params
+  
+  const API_KEY = 'your-secret-api-key';
 
-  // 1️⃣ On mount: generate booking number + fetch items & customers
   useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      bookNumber: generateBookingNumber()
-    }));
-    fetchItems();
-    fetchCustomers();
-  }, []);
+    const fetchOrderData = async () => {
+      try {
+        const response = await fetch(`https://pos.inspiredgrow.in/vps/api/orders/${orderId}`, {
+          headers: { 'x-api-key': API_KEY },
+        });
 
-  const generateBookingNumber = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, '0');
-    return `BN${timestamp}${random}`;
-  };
+        if (!response.ok) throw new Error('Failed to fetch order data');
 
-  // Fetch all items for a potential dropdown
-  const fetchItems = async () => {
-    try {
-      const res = await axios.get(
-        `${link}/api/items`
-      );
-      setItems(res.data);
-    } catch (err) {
-      console.error('Error fetching items:', err);
-    }
-  };
+        const data = await response.json();
+        setOrderData({
+          status: data.status,
+          location: data.location,
+          customerNumber: data.customerNumber,
+        });
+        setLoading(false);
+      } catch (error) {
+        setError(error.message);
+        setLoading(false);
+        console.error('Error fetching order data:', error);
+      }
+    };
 
-  // Fetch all customers for selection
-  const fetchCustomers = async () => {
-    try {
-      const res = await axios.get(
-        `${link}/api/customer-data/all`
-      );
-      setCustomers(res.data);
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-    }
-  };
+    fetchOrderData();
+  }, [orderId]);
 
-  // Handle form field changes
-  const handleChange = e => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    // When selecting a customer, auto-fill contactNumber
-    if (name === 'customerId') {
-      const cust = customers.find(c => c._id === value);
-      setFormData(prev => ({
-        ...prev,
-        customerId: value,
-        contactNumber: cust?.contactNumber || ''
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setOrderData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
 
-  // Submit booking
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
-      const payload = {
-        bookNumber: formData.bookNumber,
-        bookingDate: formData.bookingDate,
-        customerId: formData.customerId,
-        contactNumber: formData.contactNumber,
-        location: formData.location,
-        remark: formData.remark
-      };
-      const res = await axios.post(
-        `${link}/api/booking-orders`,
-        payload
-      );
-      toast.success(
-        `Booking ${res.data.bookNumber} submitted successfully!`,
-        { autoClose: 3000 }
-      );
+      const response = await fetch(`https://pos.inspiredgrow.in/vps/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+        body: JSON.stringify(orderData),
+      });
 
-      // Reset form and regenerate number
-      const newBN = generateBookingNumber();
-      setFormData({
-        bookNumber: newBN,
-        bookingDate: '',
-        customerId: '',
-        contactNumber: '',
-        location: '',
-        remark: ''
-      });
+      if (!response.ok) throw new Error('Failed to update order');
+
+      console.log('Order updated successfully');
+      navigate('/orders');  // Redirect to the order listing page or wherever you want after update
     } catch (error) {
-      console.error('Error submitting booking:', error);
-      toast.error('Something went wrong. Please try again.', {
-        autoClose: 3000
-      });
+      console.error('Error updating order:', error);
+      setError(error.message);
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar
-        isSidebarOpen={isSidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-      />
-      <div className="flex flex-1 pt-16">
-        <Sidebar isSidebarOpen={isSidebarOpen} />
-        <div
-          className={`flex-1 p-4 sm:p-6 bg-gray-100 transition-all duration-300 ${
-            isSidebarOpen ? 'ml-64' : 'ml-0'
-          }`}
-        >
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
+    <div className="min-h-screen p-6 bg-gray-100">
+      <h2 className="mb-4 text-xl font-semibold">Update Order</h2>
+      <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-md">
+        <div className="mb-4">
+          <label className="block mb-1 font-medium text-gray-700">Status</label>
+          <input
+            type="text"
+            name="status"
+            value={orderData.status}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="Enter status (e.g., Pending, Shipped)"
+            required
           />
-          <form
-            onSubmit={handleSubmit}
-            className="max-w-4xl p-6 mx-auto mb-6 text-white bg-gray-900 rounded shadow-lg"
-          >
-            <h2 className="mb-4 text-xl font-bold text-orange-400">
-              New Booking
-            </h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {/* Booking Number */}
-              <input
-                type="text"
-                name="bookNumber"
-                placeholder="Booking Number"
-                value={formData.bookNumber}
-                readOnly
-                required
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-
-              {/* Booking Date */}
-              <input
-                type="date"
-                name="bookingDate"
-                value={formData.bookingDate}
-                onChange={handleChange}
-                required
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-
-              {/* Customer Selection */}
-              <select
-                name="customerId"
-                value={formData.customerId}
-                onChange={handleChange}
-                required
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-orange-400"
-              >
-                <option value="">Select Customer</option>
-                {customers.map(c => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Auto-filled Contact Number */}
-              <input
-                type="text"
-                name="contactNumber"
-                placeholder="Contact Number"
-                value={formData.contactNumber}
-                readOnly
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded opacity-75 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-
-              {/* Location */}
-              <input
-                type="text"
-                name="location"
-                placeholder="Location"
-                value={formData.location}
-                onChange={handleChange}
-                required
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-
-              {/* Remark */}
-              <input
-                type="text"
-                name="remark"
-                placeholder="Remark"
-                value={formData.remark}
-                onChange={handleChange}
-                required
-                className="p-2 text-white bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="flex items-center justify-center w-full px-6 py-2 mx-auto mt-6 font-semibold text-white transition-colors duration-200 bg-orange-500 rounded hover:bg-orange-600 sm:w-auto"
-            >
-              Submit Booking
-            </button>
-          </form>
         </div>
-      </div>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium text-gray-700">Location</label>
+          <input
+            type="text"
+            name="location"
+            value={orderData.location}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="Enter delivery location"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium text-gray-700">Customer Number</label>
+          <input
+            type="text"
+            name="customerNumber"
+            value={orderData.customerNumber}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="Enter customer phone number"
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/orders')} // Redirect back to order list
+            className="px-4 py-2 text-white bg-gray-500 rounded-md hover:bg-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 text-white bg-green-500 rounded-md hover:bg-green-600"
+          >
+            Save
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
 
-export default MybookingForm;
+export default UpdateOrder;

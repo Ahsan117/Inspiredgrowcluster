@@ -1,24 +1,21 @@
 import React ,{useState,useEffect,useRef}from 'react'
-import { FaBarcode } from 'react-icons/fa';
-import { CameraIcon } from '@heroicons/react/solid';
-import { faCamera } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import {
   FaArrowLeft,
   FaSearch,
   FaPlus,
   FaQrcode,
-  FaChevronDown,
-  FaEllipsisV,FaMinus
+   FaMinus
 } from "react-icons/fa";
 import PurchaseScanner from './PurchaseScanner';
-import dayjs from 'dayjs';
+
 import { FaTrashAlt} from 'react-icons/fa';
 import { App } from "@capacitor/app";
 import { useLocation,useNavigate } from 'react-router-dom'
 import Swal from "sweetalert2"
 import { Keyboard } from '@capacitor/keyboard';
-import { set } from 'date-fns';
+
+import playSound from "../../../utility/sound";
 export default function Purchase2({itemScan,setItemScan,
     filteredItems,stopScanner,addItemsInBatch,
     allItems,matchedItems,setMatchedItems,setActiveTab,removeItem,updateItem,
@@ -80,7 +77,7 @@ const handleViewInfo = (item) => {
   const handleQuanity = (id, type) => {
   console.log("handleQuantity", id, type);
   const updatedItems = formData.items.reduce((acc, item) => {
-    if (item.item === id) {
+    if (item._id === id) {
       let newQty = item.quantity;
 
       if (type === "plus") {
@@ -192,11 +189,21 @@ useEffect(() => {
            onChange={(e) => {
         const val = e.target.value;
         setResult(val);
+        if(val =="" || val == " ") return ;
+        
+        const trimmed = val.trim();
+        const hit = allItems.find(i => i.barcodes?.includes(trimmed) || i.itemCode==trimmed );
+       console.log(hit)
+        if(hit?.variantId) playSound("/sounds/beep-6-96243.mp3")
       }}
         onKeyDown={(e) => {
     if (e.key === "Enter") {
       e.preventDefault(); // ✅ block Enter default (form submit / step reset)
-
+    
+     
+        
+      if(filteredItems.length > 1) return;
+             
       if (filteredItems[0]) {
         addItem(filteredItems[0]);
         setResult(""); // clear after adding
@@ -275,8 +282,16 @@ useEffect(() => {
     {/* Items List */}
     <div className="space-y-3">
       {formData.items?.map((item, index) => {
-        const it = allItems.find(i => i._id === item.item);
-        if (!it) return null;
+       
+        const it = allItems.find(i => {
+             
+               if( i._id === item._id && i.variantId === item.variant){
+                 return i
+               }
+                else return null
+        });
+         
+        if(!it) return null;
 
         return (
   <div
@@ -359,7 +374,7 @@ useEffect(() => {
                     </button>
                   </div>
                     <div className="flex items-start justify-between mt-3">
-  <button
+  <button type="button"
     onClick={() => handleQuanity(it._id, "remove")}
     className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-600 rounded-full bg-red-50 hover:bg-red-100"
   >

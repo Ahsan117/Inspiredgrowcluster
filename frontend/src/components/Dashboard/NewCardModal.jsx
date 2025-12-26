@@ -26,6 +26,7 @@ export default function NewCardModal({ isOpen, onClose }) {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
+        console.log(data)
         setCards(data.card || []);
        console.log(data);
     } catch (error) {

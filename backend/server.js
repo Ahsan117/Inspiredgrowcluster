@@ -150,7 +150,9 @@ mongoose.connect(process.env.MONGO_URI, {
 console.log("🔑 JWT_SECRET:", process.env.JWT_SECRET);
 // app.use('/public', express.static('public'));
 
-
+app.use("/1items",require("./routes/1Items.js"))
+app.use("/1customer",require("./routes/1Customer.js"))
+app.use("/1sale",require("./routes/1Sale.js"))
 
 app.use("/api/way",location);
 app.use("/print",printRoutes)

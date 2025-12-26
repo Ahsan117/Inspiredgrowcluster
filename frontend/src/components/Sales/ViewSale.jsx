@@ -45,6 +45,7 @@ const ViewSale = () => {
     notes: '',
     creatorName: '',
     shippingCost: 0,
+    processingFee:0
   });
   const [downloadMessage, setDownloadMessage] = useState('');
 
@@ -110,7 +111,7 @@ const ViewSale = () => {
       const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("API Response:", response.data);
+     // console.log("API Response:", response.data);
       if (response.data) {
         const totalPaid = (response.data.payments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
         const amount = response.data.amount || response.data.total || response.data.totalAmount || 0;
@@ -126,12 +127,7 @@ const ViewSale = () => {
         }
 
         const detailedItems = (response.data.items || []).map((i) => {
-          console.log("Processing item:", {
-            item: i.item,
-            variant: i.variant,
-            itemName: i.itemName,
-            warehouseId: response.data.warehouse?._id || response.data.warehouse
-          });
+         
 
           const itemDoc = allItems.find((ai) => {
             const itemId = i.item?._id || i.item;
@@ -150,13 +146,7 @@ const ViewSale = () => {
             );
           });
 
-          console.log("Matched itemDoc:", itemDoc ? {
-            _id: itemDoc._id,
-            parentId: itemDoc.parentId,
-            variantId: itemDoc.variantId,
-            itemName: itemDoc.itemName,
-            warehouseId: itemDoc.warehouse?._id
-          } : "Not found");
+         //console.log(itemDoc)
 
           const unitPrice = i.price || i.unitPrice || (itemDoc?.salesPrice) || 0;
           const quantity = i.quantity || 1;
@@ -195,13 +185,15 @@ const ViewSale = () => {
           saleCode: response.data.saleCode || '',
           amount: amount,
           status: response.data.status || (source === "POS" ? "Completed" : "N/A"),
-          subtotal: response.data.subtotal || 0,
-          tax: response.data.tax || response.data.taxAmount || 0,
+          subtotal: response.data.subtotal || 0 ,
+          tax: response.data.tax || response.data.taxAmount || 0 ,
           discount: response.data.discount || response.data.discountAmount || 0,
-          paymentStatus: paymentStatus,
-          notes: response.data.notes || response.data.comments || "",
-          creatorName: response.data.creatorName || "N/A",
-          shippingCost: response.data.shippingCost || 0,
+          paymentStatus: paymentStatus ,
+          notes: response.data.notes || response.data.comments || "" ,
+          creatorName: response.data.creatorName || "N/A" ,
+          deliveryFee: response.data.deliveryFee || 0 ,
+          processingFee: response.data.processingFee || 0,
+          additionalPayment:response.data.additionalPayment
         });
       } else {
         throw new Error("No data returned from API");
@@ -481,7 +473,7 @@ const ViewSale = () => {
                 <label className="block font-semibold text-gray-700">Customer</label>
                 <input
                   type="text"
-                  value={invoiceData.customer.customerName || "N/A"}
+                  value={invoiceData.customer.customerName ||  invoiceData.customer.name || "N/A"}
                   className="w-full p-2 border rounded-md"
                   disabled
                 />
@@ -560,15 +552,45 @@ const ViewSale = () => {
                   disabled
                 />
               </div>
-              <div>
+             
+              {source === "POS" && (
+                <div>
                 <label className="block font-semibold text-gray-700">Shipping Cost</label>
                 <input
                   type="text"
-                  value={`₹${(invoiceData.shippingCost || 0).toFixed(2)}`}
+                  value={`₹${(invoiceData.deliveryFee || 0).toFixed(2)}`}
                   className="w-full p-2 border rounded-md"
                   disabled
                 />
               </div>
+              )}
+  {source === "POS" && (
+    
+    <div>
+                <label className="block font-semibold text-gray-700">Processing Fee</label>
+                <input
+                  type="text"
+                  value={`₹${(invoiceData.processingFee || 0).toFixed(2)}`}
+                  className="w-full p-2 border rounded-md"
+                  disabled
+                  />
+              </div>
+                )
+              }
+{source ==="POS" && invoiceData.additionalPayment?.map(it =>(
+  
+  <div>
+  <label className="block font-semibold text-gray-700">{it.note}</label>
+  <input
+    type="text"
+    value={`₹${(it.amount || 0).toFixed(2)}`}
+    className="w-full p-2 border rounded-md"
+    disabled
+    />
+</div>
+))}
+              
+              
               <div className="md:col-span-2">
                 <label className="block font-semibold text-gray-700">Notes</label>
                 <textarea
@@ -605,7 +627,11 @@ const ViewSale = () => {
                         </td>
                       </tr>
                     ) : (
-                      invoiceData.items.map((item, index) => (
+                      invoiceData.items.map((item, index) =>{ 
+                        
+                        console.log(item)
+                        
+                        return(
                         <tr key={index}>
                           <td className="px-2 py-1 border">{item.itemName}</td>
                           <td className="px-2 py-1 border">₹{(item.unitPrice || 0).toFixed(2)}</td>
@@ -618,7 +644,7 @@ const ViewSale = () => {
                           <td className="px-2 py-1 border">₹{(item.unitCost || 0).toFixed(2)}</td>
                           <td className="px-2 py-1 border">₹{(item.total || 0).toFixed(2)}</td>
                         </tr>
-                      ))
+                      )})
                     )}
                   </tbody>
                 </table>

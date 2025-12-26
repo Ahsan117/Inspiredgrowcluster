@@ -17,10 +17,12 @@ import LoadingScreen from "../../Loading";
 import {Browser} from '@capacitor/browser';
 import BluetoothDevicesPage from '../../pages/BluetoothDevicesPage.jsx';  
 import CardOtpModal from '../Dashboard/CardApply.jsx';
+import Print from "./Print.jsx"
 const PurchaseOverview = () => {
   const [device, setDevice] = useState(false);
       const link="https://pos.inspiredgrow.in/vps"
   const navigate = useNavigate();
+  const [print,setPrint]=useState(null);
   const [warehouses, setWarehouses] = useState([]);
   const [warehouse, setWarehouse] = useState("all");
   const [startDate, setStartDate] = useState("");
@@ -662,7 +664,7 @@ const formatItemRow = (item, idx) => {
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   text += twoColumn(`Date: ${dateStr}`, `Time: ${timeStr}`) + '\n';
   text +=`Invoice: #${data.saleCode}`+'\n';
-  text+=`Customer: ${data.customer.customerName || 'walk-in customer'}`+'\n';
+  text+=`Customer: ${data.customer?.customerName || data.customer?.name || 'walk-in customer'}`+'\n';
   text += line;
   // --- Items Table Header ---
  
@@ -682,7 +684,8 @@ const formatItemRow = (item, idx) => {
 
   // --- Full Summary Section ---
   const totalQuantity = data.items.reduce((sum, item) => sum + item.quantity, 0);
-
+   const deliveryFee=data.deliveryFee || 0
+   const processingFee= data.processingFee || 0
         const rawTotal = data.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
 
         const disc = data.totalDiscount || 0;
@@ -700,7 +703,7 @@ const paid = data.payments.reduce((sum, p) => sum + p.amount, 0);
       
 const prevDue = data.previousBalance  || 0;
 
-const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
+const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount + deliveryFee + processingFee;
 
 
   const addSummaryLine = (label, value) => {
@@ -716,7 +719,14 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
   if(exclusiveDiscount > 0)
   text += addSummaryLine('Premium Membership Discount:',`-${exclusiveDiscount?.toFixed(2) || 0}`);
   
-  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales + additionalCharges - exclusiveDiscount)?.toFixed(2) || 0);
+
+  if(deliveryFee > 0)
+    text += addSummaryLine('Delivery Fee:',`+${deliveryFee?.toFixed(2) || 0}`);
+   
+  if(processingFee > 0)
+    text += addSummaryLine('ProcessingFee:',`+${processingFee?.toFixed(2) || 0}`);
+    
+  text += addSummaryLine('TOTAL:', ((taxAmt || 0)+ totalSales + additionalCharges - exclusiveDiscount + deliveryFee + processingFee)?.toFixed(2) || 0);
   text += addSummaryLine('Paid Payment:', paid?.toFixed(2));
   text += addSummaryLine('Previous Due:', prevDue?.toFixed(2));
   text += addSummaryLine('TOTAL DUE:', totalDue?.toFixed(2));
@@ -735,7 +745,7 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
    const handleBluetoothPrint = (sale) => {
   try {
     setLoading(true);
-
+    setPrint(sale)
     const printinfo = generatePlainTextReceipt(sale);
     console.log(printinfo);
 
@@ -765,7 +775,7 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
 
 
   if (loading) return (<LoadingScreen />);
-
+  if(print) return <Print print={print} setPrint={setPrint} setDevice={setDevice}/>
   return (
     <div className="flex flex-col">
           
@@ -974,7 +984,7 @@ const totalDue = prevDue + netBeforeTax + taxAmt - paid - exclusiveDiscount;
                         </td>
                         <td className="px-2 py-1 border">{inv.saleCode}</td>
                         <td className="px-2 py-1 border">
-                          {typeof inv.customer === 'string' ? inv.customer : inv.customer?.customerName || "N/A"}
+                          {typeof inv.customer === 'string' ? inv.customer : inv.customer?.customerName || inv.customer?.name || "N/A"}
                         </td>
                         <td className="px-2 py-1 border">₹{inv.totalAmount.toFixed(2)}</td>
                         <td className="px-2 py-1 border">₹{totalPaid.toFixed(2)}</td>
