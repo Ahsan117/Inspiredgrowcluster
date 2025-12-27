@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/mayank sharma/OneDrive/Desktop/git/gowbackend-app",
-      "program": "c:/Users/mayank sharma/OneDrive/Desktop/git/gowbackend-app/build/Debug/outDebug",
+      "cwd": "c:/git/gowbackend-app",
+      "program": "c:/git/gowbackend-app/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
