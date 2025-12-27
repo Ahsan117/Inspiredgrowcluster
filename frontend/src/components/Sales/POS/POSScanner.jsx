@@ -135,7 +135,7 @@ function applyOfferLogic(itemList) {
 
       if (m.length > 1) {
       
-        playSound(".assets/sounds/short-beep-tone-47916.mp3")
+        playSound("/sounds/short-beep-tone-47916.mp3")
         setMultiMatchItems(m);
         setShowMultiSelect(true);
         isScanningRef.current = false; // allow next scan after choosing
@@ -168,7 +168,7 @@ if (match) {
       updatedItems = [...prevItems];
       updatedItems[existingIndex] = updatedItem;
 
-      playSound("./assets/sounds/item-exists.mp3");
+      playSound("/sounds/item-exists.mp3");
     } else {
       const newItem = {
         ...match,
@@ -183,7 +183,7 @@ if (match) {
       };
 
       updatedItems = [ newItem , ...prevItems];
-      playSound("./assets/sounds/item-added.mp3");
+      playSound("/sounds/item-added.mp3");
     }
 
     // 🔁 Apply offer logic
@@ -326,7 +326,7 @@ const handleQuantity = (id, type) => {
           quantity: currentItem.quantity + 1
         };
   
-        playSound("./assets/sounds/item-exists.mp3");
+        playSound("/sounds/item-exists.mp3");
   
       } else {
         const newItem = {
@@ -342,7 +342,7 @@ const handleQuantity = (id, type) => {
         };
   
         updatedItems = [ newItem, ...prevItems ];
-        playSound("./assets/sounds/item-added.mp3");
+        playSound("/sounds/item-added.mp3");
       }
   
       return applyOfferLogic(updatedItems);

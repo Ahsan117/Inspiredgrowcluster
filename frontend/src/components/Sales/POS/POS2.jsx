@@ -236,7 +236,7 @@ const lastScanRef = useRef({ code: null, time: 0 });
         const trimmed = val.trim();
         const hit = allItems.find(i => i.barcodes?.includes(trimmed) || i.itemCode==trimmed );
        console.log(hit)
-        if(hit?.variantId) playSound("./assets/sounds/beep-6-96243.mp3")
+        if(hit?.variantId) playSound("/sounds/beep-6-96243.mp3")
       }}
 
 

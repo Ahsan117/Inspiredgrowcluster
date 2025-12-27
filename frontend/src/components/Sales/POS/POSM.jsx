@@ -765,7 +765,7 @@ async function addItem(it) {
     const newQty = existing.quantity + quantityToAdd;
 
     if (newQty <= existing.currentStock) {
-      playSound("./assets/sounds/item-exists.mp3");
+      playSound("/sounds/item-exists.mp3");
       updated[existingIdx] = {
         ...existing,
         quantity: newQty,
@@ -781,7 +781,7 @@ async function addItem(it) {
     setSearchItemCode("");
     return;
   } else {
-    playSound("./assets/sounds/item-added.mp3");
+    playSound("/sounds/item-added.mp3");
     const newItem = {
       barcode: it.barcode || "",
       barcodes: it.barcodes || [],
@@ -874,7 +874,7 @@ async function addItemsInBatch(matchedItems) {
       const newQty = existing.quantity + quantityToAdd;
 
       if (newQty <= existing.currentStock) {
-        playSound("./assets/sounds/item-exists.mp3");
+        playSound("/sounds/item-exists.mp3");
         updated[existingIdx] = {
           ...existing,
           quantity: newQty,
@@ -883,7 +883,7 @@ async function addItemsInBatch(matchedItems) {
       }
       continue;
     } else {
-      playSound("./assets/sounds/item-added.mp3");
+      playSound("/sounds/item-added.mp3");
       const newItem = {
         description: it.description || "",
         offer:it.offer ,
