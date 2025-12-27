@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "622403882222",
+    "project_id": "inspiredgrow-prod",
+    "storage_bucket": "inspiredgrow-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:622403882222:android:50826cadd3d341f37c77ff",
+        "android_client_info": {
+          "package_name": "com.anshul.eshop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4-FJTOJ9DPv7IlXKtOTgNv7LYinkpoLM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
