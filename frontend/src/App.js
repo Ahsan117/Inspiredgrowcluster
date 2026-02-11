@@ -1,10 +1,6 @@
 import React, { useState,useEffect ,useContext} from "react";
 import { Suspense, lazy } from "react";
 
-
-
-
-
 import BackButtonHandler from "./BackButtonHandler";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
@@ -169,7 +165,6 @@ const PurchaseM = lazy(() => import("./components/purchase/NewPurchase/PurchaseM
 const Sm = lazy(() => import("./components/Stock/StockTransfer/Sm"));
 const PrinterSettings = lazy(() => import("./pages/PrinterSettings"));
 const Print = lazy(() => import("./components/Sales/POS/Print"));
-const ClubBillReport = lazy(() => import("./components/Reports/ClubReport"));
 const AccountList1 = lazy(() => import("./components/Accounts/AccountListM/AccountList1"));
 const NewItem = lazy(() => import("./components/Items/NewItem"));
 const StockAnalyser = lazy(() => import ("./components/Stock/StockAnalyser/StockAnalyser.jsx"));
@@ -190,6 +185,9 @@ const LastOtpView=lazy(()=>import ("./components/card/LastOtpView"))
 const PurchaseDetail=lazy(()=>import("./components/purchase/PurchaseDetail.jsx"))
 const PurchaseReturnDetail=lazy(()=>import("./components/purchase/PurchaseReturnDetail.jsx"))
 //new reports
+
+
+
 const StockReport = lazy(() => import("./components/Reports/newreport/StockReport"));
 const SalesReport=lazy(()=>import("./components/Reports/newreport/SalesReport.jsx"))
 const SalesReturnReport=lazy(()=>import("./components/Reports/newreport/SalesReturnReport.jsx"))
@@ -204,6 +202,28 @@ const ItemStockHistoryReport = lazy(()=>import("./components/Reports/newreport/I
 const ItemCompare = lazy(() => import("./components/Reports/newreport/stockComparison/ItemCompare.jsx"));
 const CustomerReport =lazy(()=>import("./components/Reports/newreport/CustomerReport.jsx"))
 const SellerPointReport =lazy(()=>import("./components/Reports/newreport/SellerPointReport.jsx"))
+// const ItemPandLReport=lazy(()=>import("./components/Reports/newreport/ItemPandLReport.jsx"))
+
+const AllTransactionReport =lazy(()=>import("./components/Reports/newreport/AllTransactionReport.jsx"))
+const CustomerOrderReport =lazy(()=>import("./components/Reports/newreport/CustomerOrderReport.jsx"))
+const DeliveryChargesReport =lazy(()=>import("./components/Reports/newreport/DeliveryChargesReport.jsx"))
+const DeliveryRiderReport =lazy(()=>import("./components/Reports/newreport/DeliveryRider.jsx"))
+const PartyWiseItemReport =lazy(()=>import("./components/Reports/newreport/PartyWiseItemReport.jsx"))
+const LowStockItemReport =lazy(()=>import("./components/Reports/newreport/LowStockReport.jsx"))
+const DeadStockItemReport =lazy(()=>import("./components/Reports/newreport/DeadStockReport.jsx"))
+const ExpiredStockItemReport =lazy(()=>import("./components/Reports/newreport/ExpiredStockReport.jsx"))
+const InventoryTurnOverReport =lazy(()=>import("./components/Reports/newreport/InventoryTurnOverReport.jsx"))
+const SalesTrendReport =lazy(()=>import("./components/Reports/newreport/SalesTrendReport.jsx"))
+const CustomerRetentionReport =lazy(()=>import("./components/Reports/newreport/CustomerRetentionReport.jsx"))
+const CategoryWiseReport =lazy(()=>import("./components/Reports/newreport/CategoryWiseReport.jsx"))
+const ForecastingReport =lazy(()=>import("./components/Reports/newreport/ForecastingReport.jsx"))
+const DiscountImpactReport =lazy(()=>import("./components/Reports/newreport/DiscountImpactReport.jsx"))
+const WarehouseUtilizeReport =lazy(()=>import("./components/Reports/newreport/WarehouseUtilize.jsx"))
+const SaleVsInventoryReport =lazy(()=>import("./components/Reports/newreport/SaleVsInventory.jsx"))
+const SeasonSaleReport =lazy(()=>import("./components/Reports/newreport/SeasonSales.jsx"))
+const PaymentReport =lazy(()=>import("./components/Reports/newreport/PaymentMethod.jsx"))
+const ClubBillReport = lazy(() => import("./components/Reports/ClubReport"));
+const ClubBILLReport = lazy(() => import("./components/Reports/newreport/ClubBillReport.jsx"));
 
 
 const AdminBookingPanel         = lazy(() => import("./components/Booking/VanBookingPanel"));
@@ -377,7 +397,11 @@ StatusBar.setOverlaysWebView({ overlay: false });
           <Route path="/rider/claim"             element={<RiderClaimPanel />} />
           <Route path="/my-jobs"                 element={<MyJobsPanel />} />
         {/* new reports */}
-        <Route path="/reports/sales-report" element={<SalesReport />} />
+         <Route path="/reports-list" element={<ReportsList />} />
+
+
+
+            <Route path="/reports/sales-report" element={<SalesReport />} />
         <Route path="/reports/sales-return" element={<SalesReturnReport />} />
         <Route path="/reports/purchase-report" element={<PurchaseReport />} />
         <Route path="/reports/purchase-return" element={<PurchaseReturnReport />} />
@@ -391,8 +415,26 @@ StatusBar.setOverlaysWebView({ overlay: false });
         <Route path="/reports/item-compare" element={<ItemCompare />} />
         <Route path="/reports/customer" element={<CustomerReport />} />
         <Route path="/reports/seller-point" element={<SellerPointReport />} />
-
-
+        <Route path="/reports/all-transaction-report" element={<AllTransactionReport />} />
+        <Route path="/reports/customer-order-report" element={<CustomerOrderReport />} />
+        <Route path="/reports/delivery-charge-report" element={<DeliveryChargesReport />} />
+        <Route path="/reports/delivery-rider-report" element={<DeliveryRiderReport />} />
+        <Route path="/reports/partywise-item-report" element={<PartyWiseItemReport />} />
+        <Route path="/reports/lowstock-item-report" element={<LowStockItemReport />} />
+        <Route path="/reports/deadstock-item-report" element={<DeadStockItemReport />} />
+        <Route path="/reports/expiredstock-item-report" element={<ExpiredStockItemReport />} />
+        <Route path="/reports/inventoryturnover-report" element={<InventoryTurnOverReport />} />
+        <Route path="/reports/salestrend-report" element={<SalesTrendReport />} />
+        <Route path="/reports/customer-retention-report" element={<CustomerRetentionReport />} />
+        <Route path="/reports/categorywise-report" element={<CategoryWiseReport />} />
+        <Route path="/reports/forecasting-report" element={<ForecastingReport />} />
+        <Route path="/reports/discount-impact-report" element={<DiscountImpactReport />} />
+        <Route path="/reports/warehouse-utilize-report" element={<WarehouseUtilizeReport />} />
+        <Route path="/reports/sale-inventory-report" element={<SaleVsInventoryReport />} />
+        <Route path="/reports/seasonsale-report" element={<SeasonSaleReport />} />
+        <Route path="/reports/payment-report" element={<PaymentReport />} />
+        <Route path="/reports/club-bill" element={<ClubBillReport />} />
+         <Route path="/club-bill-report" element={<ClubBILLReport />} />
 
 
         <Route path="/add-items-offer" element={<AddItemsOffer />} />

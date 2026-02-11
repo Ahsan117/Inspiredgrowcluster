@@ -66,7 +66,7 @@ export default function ItemWiseProfitReport() {
       //   supplier:selectedSupplier.length > 0?selectedSupplier.map(i=>i.label):options.suppliers.map(i=>i.label),
       //   search:search
       // })
-      const response = await axios.get(`${link}/api/reports/stock-report`, {
+      const response = await axios.get(`${link}/api/reports/expiredstock-report`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         params:{
           warehouse:selectedWarehouse.length>0?selectedWarehouse.map(i => i.value):options.warehouses.map(i =>i.value),
@@ -107,7 +107,7 @@ export default function ItemWiseProfitReport() {
         "Purchase Price": pPrice,
         "Sales Price": item.salesPrice || 0,
         "Current Stock": stock,
-        "Unit Profit/Loss": (item.salesPrice - pPrice).toFixed(2)
+        // "Unit Profit/Loss": (item.salesPrice - pPrice).toFixed(2)
       };
     });
   
@@ -126,7 +126,7 @@ export default function ItemWiseProfitReport() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Stock Report");
     
     // Generate filename with timestamp
-    const fileName = `ItemWiseProfit_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `ExpiredStockITem_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
@@ -148,7 +148,7 @@ export default function ItemWiseProfitReport() {
   
     const tableColumn = [
       "#", "Code", "Item Name", "Brand", "Category", 
-      "MRP", "Sales", "Purchase", "Stock", "Profit/Loss"
+      "MRP", "Sales", "Purchase", "Stock"
     ];
     
     const tableRows = allItems.map((item, i) => {
@@ -166,7 +166,7 @@ export default function ItemWiseProfitReport() {
         item.salesPrice || 0,
         pPrice,
         stockValue,
-        (item.salesPrice - pPrice).toFixed(2)
+        // (item.salesPrice - pPrice).toFixed(2)
       ];
     });
   
@@ -182,7 +182,7 @@ export default function ItemWiseProfitReport() {
         6: { halign: 'right' },
         7: { halign: 'right' },
         8: { halign: 'center', fontStyle: 'bold' },
-        9: { halign: 'right', fontStyle: 'bold' },
+        // 9: { halign: 'right', fontStyle: 'bold' },
       },
       didDrawPage: (data) => {
         // Add page number at bottom
@@ -192,7 +192,7 @@ export default function ItemWiseProfitReport() {
       }
     });
   
-    doc.save(`ItemWiseProfit_Report_${new Date().getTime()}.pdf`);
+    doc.save(`ExpiredStockItem_Report_${new Date().getTime()}.pdf`);
   };
 
   return (
@@ -210,13 +210,13 @@ export default function ItemWiseProfitReport() {
         <div className="flex flex-col w-full max-h-screen min-h-screen p-6 overflow-y-auto">
           {/* Header */}
           <header className="flex flex-col items-start justify-between mb-4 sm:flex-row sm:items-center">
-            <h1 className="text-2xl font-semibold text-gray-800">ItemWise Profit Report</h1>
+            <h1 className="text-2xl font-semibold text-gray-800">Expired Stock Item Report</h1>
             <nav className="flex items-center gap-2 text-sm text-gray-600">
               <NavLink to="/dashboard" className="flex items-center hover:text-cyan-600">
                 <FaTachometerAlt className="mr-2" /> Home
               </NavLink>
               <span>&gt;</span>
-              <span className="text-cyan-600">ItemWise Profit Report</span>
+              <span className="text-cyan-600">Expired Stock Report</span>
             </nav>
           </header>
 
@@ -313,7 +313,7 @@ export default function ItemWiseProfitReport() {
                     <th className="p-2">Stock</th>
                     <th className="p-2">Purchase Price</th>
                     <th className="p-2">Sales Price</th>
-                    <th className="p-2">Profit/Loss</th>
+                    {/* <th className="p-2">Profit/Loss</th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -329,7 +329,7 @@ export default function ItemWiseProfitReport() {
                         <td className="p-2 text-center">{item.currentStock}</td>
                         <td className="p-2 text-center">{item.purchasePrice}</td>
                         <td className="p-2 text-center">{item.salesPrice}</td>
-                        <td className={`p-2 text-center ${(item.salesPrice-item.purchasePrice)>=0?"text-green-600":"text-red-600"}`}>{(item.salesPrice-item.purchasePrice).toFixed(2)}</td>
+                        {/* <td className={`p-2 text-center ${(item.salesPrice-item.purchasePrice)>=0?"text-green-600":"text-red-600"}`}>{(item.salesPrice-item.purchasePrice).toFixed(2)}</td> */}
                       </tr>
                     ))
                   ) 

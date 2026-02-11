@@ -243,7 +243,7 @@ export default function BillWiseProfitReport() {
                 <tbody>
                   {allItems.map((item, i) => (
                     <tr key={i} className="border-b hover:bg-gray-50"
-                      onClick={() => navigate(`/view-sale?id=${item._id}&source=${item.source}`)}>
+                      onClick={() => navigate(`/view-sale-report?id=${item._id}&source=${item.source}`)}>
                       <td className="p-2 text-center">{i + 1}</td>
                       <td className="p-2 text-center">{new Date(item.saleDate).toLocaleDateString()}</td>
                       <td className="p-2 text-center">{item.saleCode}</td>

@@ -785,7 +785,7 @@ if(print) return <Print print={print} setPrint={setPrint} setDevice={setDevice}/
     {
       hasPermissionFor("report","View") &&(
         <button
-       onClick={() => navigate('/reports/club-bill')}
+       onClick={() => navigate('/club-bill-report')}
       className="w-full h-12 text-white transition-transform duration-150 shadow rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:scale-105"
     >
       Club Bill

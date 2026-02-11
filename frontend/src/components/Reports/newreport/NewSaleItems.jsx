@@ -31,7 +31,7 @@ export default function StockReport() {
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  
+  const[itemwise,setItemWise]=useState([])
   // Data
   const [allItems, setAllItems] = useState([]);
 
@@ -82,6 +82,19 @@ export default function StockReport() {
       });
        console.log(response)
       setAllItems(response.data);
+      // Table render hone se pehle ye logic likhein
+const itemWiseSales = response.data.flatMap((bill) => 
+  bill.items.map((it) => ({
+    ...it,
+    saleDate: bill.saleDate,
+    saleCode: bill.saleCode,
+    customerName: bill.customer?.customerName || "Walk-in",
+    warehouseName: bill.warehouse?.warehouseName,
+    // Agar backend se totalAmount bill ka hai, toh item ka total yahan calculate hoga
+    itemTotal: it.subtotal || (it.price * it.quantity) 
+  }))
+);
+setItemWise(itemWiseSales)
     } catch (err) {
       console.error(err.message);
     } finally {
@@ -89,60 +102,76 @@ export default function StockReport() {
     }
   };
 
-  // Export Excel
   const exportToExcel = () => {
     const rows = [];
   
     allItems.forEach((bill, index) => {
-      // Main bill entry
-      rows.push({
-        "#": index + 1,
-        "Sale Date": new Date(bill.saleDate).toLocaleDateString(),
-        "Sale Code": bill.saleCode,
-        Customer: bill.customer?.customerName,
-        Warehouse: bill.warehouse?.warehouseName,
-        Total: bill.totalAmount,
-      });
-         console.log(bill)
-      // Bill items (indented)
       bill.items?.forEach((it) => {
         rows.push({
-          "#": "",
-          "Sale Date": "",
-          "Sale Code": "   → " + (it.item?.itemName|| "-" ),
-          Customer: "Qty: " + it.quantity,
-          Warehouse: "Price: ₹" + it.price,
-          Total: "Amount: ₹" + it.subtotal,
+          "#": rows.length + 1,
+          "Sale Date": new Date(bill.saleDate).toLocaleDateString(),
+          "Sale Code": bill.saleCode,
+          "Customer": bill.customer?.customerName || "Walk-in",
+          "Warehouse": bill.warehouse?.warehouseName,
+          "Item Name": it.item?.itemName || "-",
+          "Quantity": it.quantity,
+          "Unit Price": it.price,
+          "Subtotal": it.subtotal || (it.price * it.quantity),
+          "Bill Total": bill.totalAmount // Optional: Reference for the whole bill
         });
       });
     });
   
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Item Wise Sales");
   
-    XLSX.writeFile(workbook, "salesitems_report.xlsx");
+    // Column width auto-adjust (optional but helpful)
+    worksheet["!cols"] = [{ wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 15 }];
+  
+    XLSX.writeFile(workbook, "Item_Wise_Sales_Report.xlsx");
   };
 
-  // Export PDF
   const exportToPDF = () => {
     const doc = new jsPDF({ orientation: "landscape" });
-    doc.text("Sales Report", 14, 15);
-
-    autoTable(doc, {
-      head: [["#", "Sale Code", "Sale Date", "Customer", "Warehouse", "Total"]],
-      body: allItems.map((item, i) => [
-        i + 1,
-        item.saleCode,
-        new Date(item.saleDate).toLocaleDateString(),
-        item.customer?.customerName,
-        item.warehouse?.warehouseName,
-        item.totalAmount,
-      ]),
-      startY: 20
+    
+    doc.setFontSize(18);
+    doc.text("Item-Wise Sales Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+  
+    const tableRows = [];
+    allItems.forEach((bill) => {
+      bill.items?.forEach((it) => {
+        tableRows.push([
+          tableRows.length + 1,
+          new Date(bill.saleDate).toLocaleDateString(),
+          bill.saleCode,
+          bill.customer?.customerName || "Walk-in",
+          bill.warehouse?.warehouseName,
+          it.item?.itemName || "-",
+          it.quantity,
+          `Rs. ${it.price.toLocaleString()}`,
+          `Rs. ${(it.subtotal || it.price * it.quantity).toLocaleString()}`
+        ]);
+      });
     });
-
-    doc.save("Sales_Report.pdf");
+  
+    autoTable(doc, {
+      startY: 30,
+      head: [["#", "Date", "Code", "Customer", "Warehouse", "Item Name", "Qty", "Price", "Total"]],
+      body: tableRows,
+      theme: "grid",
+      headStyles: { fillColor: [8, 145, 178] }, // Cyan-600 color to match your UI
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        5: { cellWidth: 'auto' }, // Item name gets more space
+        8: { fontStyle: 'bold' }
+      }
+    });
+  
+    doc.save("Item_Wise_Sales_Report.pdf");
   };
 
   return (
@@ -242,74 +271,68 @@ export default function StockReport() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border">
-                <thead className="text-white bg-cyan-600">
-                  <tr>
-                    <th className="p-2">#</th>
-                    <th className="p-2">Sale Date</th>
-                    <th className="p-2">Sale Code</th>
-                    <th className="p-2">Customer</th>
-                    <th className="p-2">Warehouse</th>
-                    <th className="p-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                {allItems.map((item, i) => (
-  <>
-    {/* MAIN BILL ROW */}
-    <tr 
-      key={item._id}
-      className="border-b cursor-pointer hover:bg-gray-50"
-      onClick={() => setExpandedBill(expandedBill === item._id ? null : item._id)}
-    >
-      <td className="p-2 text-center">{i + 1}</td>
-      <td className="p-2 text-center">{new Date(item.saleDate).toLocaleDateString()}</td>
-      <td className="p-2 font-semibold text-center text-blue-600">{item.saleCode}</td>
-      <td className="p-2 text-center">{item.customer?.customerName}</td>
-      <td className="p-2 text-center">{item.warehouse?.warehouseName}</td>
-      <td className="p-2 text-center">₹{item.totalAmount}</td>
+            <table className="w-full text-sm border shadow-sm">
+  <thead className="text-white bg-cyan-600">
+    <tr>
+      <th className="p-3 border">#</th>
+      <th className="p-3 border text-left">Sale Date</th>
+      <th className="p-3 border text-left">Sale Code</th>
+      <th className="p-3 border text-left">Customer</th>
+      <th className="p-3 border text-left">Warehouse</th>
+      <th className="p-3 border text-left">Item Name</th>
+      <th className="p-3 border text-center">Purchase Price</th>
+      <th className="p-3 border text-center">Sales Price</th>
+      <th className="p-3 border text-center">Qty</th>
+      <th className="p-3 border text-right">Total Amount</th>
     </tr>
+  </thead>
+  <tbody>
+    {itemwise.length > 0 ? (
+      itemwise.map((row, i) => (
+        <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
+          <td className="p-3 text-center border text-gray-400">{i + 1}</td>
+          <td className="p-3 border whitespace-nowrap">
+            {new Date(row.saleDate).toLocaleDateString("en-GB")}
+          </td>
+          <td className="p-3 border font-bold text-blue-600 uppercase">
+            {row.saleCode}
+          </td>
+          <td className="p-3 border text-gray-700">
+            {row.customerName}
+          </td>
+          <td className="p-3 border text-gray-600">
+            {row.warehouseName}
+          </td>
+          <td className="p-3 border font-medium text-gray-900">
+            {row.item?.itemName}
+          </td>
+          <td className="p-3 border text-center text-gray-600">
+            ₹{row.item?.purchasePrice || 0}
+          </td>
 
-    {/* EXPANDED ITEMS ROW */}
-    {expandedBill === item._id && (
-      <tr>
-        <td colSpan={6} className="p-3 bg-gray-50">
-
-          <table className="w-full text-xs border rounded">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="p-2">Item</th>
-                <th className="p-2 text-center">Qty</th>
-                <th className="p-2 text-center">Price</th>
-                <th className="p-2 text-center">Amount</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {item.items?.map((it, idx) => (
-                <tr key={idx} className="border-b">
-                  <td className="p-2">{it.item.itemName}</td>
-                  <td className="p-2 text-center">{it.quantity}</td>
-                  <td className="p-2 text-center">₹{it.price}</td>
-                  <td className="p-2 font-semibold text-center">₹{it.subtotal}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-        </td>
-      </tr>
+          <td className="p-3 border text-center text-gray-600">
+            ₹{row.price}
+          </td>
+          <td className="p-3 border text-center font-bold">
+            {row.quantity}
+          </td>
+          <td className="p-3 border text-right font-black text-gray-800">
+            ₹{row.itemTotal}
+          </td>
+        </tr>
+      ))
+    ) : (
+      !loading && (
+        <tr>
+          <td colSpan="9" className="p-10 text-center text-gray-400 italic bg-white">
+            No sales items found for the selected filters.
+          </td>
+        </tr>
+      )
     )}
-  </>
-))}
+  </tbody>
 
-                  {allItems.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan="6" className="p-2 text-center">No records found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+</table>
             </div>
 
           </div>

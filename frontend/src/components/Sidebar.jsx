@@ -1616,7 +1616,21 @@ api.interceptors.request.use(cfg => {
             </Transition>
           </li>
         )}
+           {(isAdmin ? adminVisibleSections.includes("reports") : hasPermissionFor("report", "View")) && (
         
+            <div
+              className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-700"
+              onClick={() => navigate("/reports-list")}
+            >
+              <div className="flex items-center space-x-2">
+                <FaChartBar />
+                <span>Reports</span>
+              </div>
+             
+            </div>
+          
+          
+        )}
  {/* Reports Dropdown */}
         {(isAdmin ? adminVisibleSections.includes("reports") : hasPermissionFor("report", "View")) && (
         
@@ -1633,6 +1647,8 @@ api.interceptors.request.use(cfg => {
           
           
         )}
+
+
 
         {/* Warehouse Dropdown */}
         {(isAdmin ? adminVisibleSections.includes("warehouse") : hasPermissionFor("Warehouses", "View")) && (

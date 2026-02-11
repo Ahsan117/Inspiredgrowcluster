@@ -36,13 +36,13 @@ export default function SellerPointsReport() {
       const token = localStorage.getItem("token");
       const [wareRes, supplierRes] = await Promise.all([
         axios.get(`${link}/api/warehouses?scope=mine`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${link}/api/suppliers`, { headers: { Authorization: `Bearer ${token}` } }),
+        // axios.get(`${link}/api/suppliers`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
         console.log(wareRes)
-        console.log(supplierRes);
+        // console.log(supplierRes);
       setOptions({
         warehouses: [ ...wareRes.data.data.map(w => ({ label: w.warehouseName, value: w._id }))],
-        suppliers:[ ...supplierRes.data.data.map(w => ({ label: w.supplierName, value: w._id }))]
+        // suppliers:[ ...supplierRes.data.data.map(w => ({ label: w.supplierName, value: w._id }))]
       });
     } catch (err) {
       console.error(err.message);
@@ -66,17 +66,17 @@ export default function SellerPointsReport() {
 
   // --- Modal Logic: Fetch Specific Customer Sales ---
   const handleCustomerClick = async (customer) => {
-    setCurrentCustomerName(customer.supplierName);
+    setCurrentCustomerName(customer.userName);
     setIsModalOpen(true);
     setModalLoading(true);
     try {
       const token = localStorage.getItem("token");
       // Note: Make sure this endpoint exists or adjust to your sale history API
-      const res = await axios.get(`${link}/api/reports/supplier-purchase-history?supplierId=${customer.supplierId || customer._id}`, {
+      const res = await axios.get(`${link}/api/reports/supplier-purchase-history?userId=${customer.userId || customer._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log(res.data)
-      setSelectedCustomerSales(res.data.orders || []);
+      setSelectedCustomerSales(res.data || []);
     } catch (err) {
       console.error("Error fetching sales:", err);
     } finally {
@@ -89,13 +89,12 @@ export default function SellerPointsReport() {
 
   const exportToExcel = () => {
 
-    const data = allItems.map((item, index) => ({
+    const data = allItems.history.map((item, index) => ({
 
       "#": index + 1,
 
-      "Supplier Name": item.supplierName,
+      "Name": item.userName,
 
-      "Mobile": item.mobile,
         "Seller Points": item.totalSellerPoints,
      
 
@@ -127,14 +126,13 @@ export default function SellerPointsReport() {
 
     autoTable(doc, {
 
-      head: [["#", "Supplier Name", "Mobile", "Seller Points"]],
+      head: [["#", "Name", "Seller Points"]],
 
-      body: allItems.map((item, i) => [
+      body: allItems.history.map((item, i) => [
 
         i + 1,
 
-        item.supplierName,
-        item.mobile,
+        item.userName,
         item.totalSellerPoints,
 
       ]),
@@ -152,41 +150,61 @@ export default function SellerPointsReport() {
 
  // --- Export Logic for Modal ---
  const exportModalExcel = () => {
-    const data = selectedCustomerSales.map((sale, i) => ({
-      "#": i + 1,
-      "Date": new Date(sale.createdAt).toLocaleDateString(),
-      "Purchase Code": sale.purchaseCode || sale.saleCode || "-",
-      "Amount": sale.grandTotal || sale.totalAmount || 0,
-      "Warehouse": sale.warehouse?.warehouseName || "-",
-      "Payment Type": sale.payments?.[0]?.paymentType?.paymentTypeName || "-",
-    }));
+  // Ensure we are accessing the .history array from our new API response
+  const reportData = selectedCustomerSales.history || [];
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sales");
-    XLSX.writeFile(wb, `${currentCustomerName}_Purchase_Report.xlsx`);
-  };
+  const data = reportData.map((sale, i) => ({
+    "#": i + 1,
+    "Date": new Date(sale.createdAt).toLocaleDateString(),
+    "Bill Number": sale.billNumber || sale._id || "-",
+    // Joining item names into a single string for Excel compatibility
+    "Bill Amount": sale.billAmount || 0,
+    "Seller Points": sale.totalBillPoints || 0,
+  }));
 
-  const exportModalPDF = () => {
-    const doc = new jsPDF();
-    doc.text(`Purchase Report: ${currentCustomerName}`, 14, 15);
-    
-    autoTable(doc, {
-      head: [["#", "Date", "Purchase Code", "Amount", "Warehouse", "Payment Type"]],
-      body: selectedCustomerSales.map((s, i) => [
-        i + 1,
-        new Date(s.createdAt).toLocaleDateString(),
-        s.purchaseCode || s.saleCode || "-",
-        s.grandTotal || s.totalAmount || 0,
-        s.warehouse?.warehouseName || "-",
-        s.payments?.[0]?.paymentType?.paymentTypeName || "-"
-      ]),
-      startY: 20,
-      styles: { fontSize: 9 }
-    });
-    
-    doc.save(`${currentCustomerName}_Purchase.pdf`);
-  };
+  const ws = XLSX.utils.json_to_sheet(data);
+  
+  // Optional: Add a 'Grand Total' row at the bottom
+  const totalPoints = selectedCustomerSales.summary?.grandTotalPoints || 0;
+  XLSX.utils.sheet_add_aoa(ws, [["", "", "", "TOTAL POINTS:", totalPoints]], { origin: -1 });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Seller Points Report");
+  XLSX.writeFile(wb, `${currentCustomerName}_Points_Report.xlsx`);
+};
+
+const exportModalPDF = () => {
+  const doc = new jsPDF();
+  const history = selectedCustomerSales.history || [];
+  const totalPoints = selectedCustomerSales.summary?.grandTotalPoints || 0;
+
+  // Title and Summary Info
+  doc.setFontSize(16);
+  doc.text(`Seller Points Report: ${currentCustomerName}`, 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Total Lifetime Points: ${totalPoints}`, 14, 22);
+  
+  autoTable(doc, {
+    head: [["#", "Date", "Bill Number", "Bill Amount", "Points"]],
+    body: history.map((s, i) => [
+      i + 1,
+      new Date(s.createdAt).toLocaleDateString(),
+      s.billNumber || "N/A",
+      // Listing items on new lines within the cell
+      s.billAmount,
+      s.totalBillPoints
+    ]),
+    startY: 28,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [40, 167, 69] }, // Green theme for points/rewards
+    columnStyles: {
+      3: { cellWidth: 60 }, // Give more width to the items column
+      4: { fontStyle: 'bold', halign: 'center' }
+    }
+  });
+  
+  doc.save(`${currentCustomerName}_Points_History.pdf`);
+};
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -205,10 +223,7 @@ export default function SellerPointsReport() {
                     <label className="text-sm font-medium">Warehouse</label>
                     <Select options={options.warehouses} value={selectedWarehouses} onChange={setSelectedWarehouses} isMulti />
                 </div>
-                <div>
-                    <label className="text-sm font-medium">Suppliers</label>
-                    <Select options={options.suppliers} value={selectedSuppliers} onChange={setSelectedSuppliers} isMulti />
-                </div>
+               
              </div>
              <div className="flex justify-end mt-4">
                 <button onClick={fetchItems} className="px-6 py-2 text-white rounded bg-cyan-600">Search</button>
@@ -246,8 +261,7 @@ export default function SellerPointsReport() {
               <thead className="text-white bg-cyan-600">
                 <tr>
                   <th className="p-2">#</th>
-                  <th className="p-2">Supplier Name</th>
-                  <th className="p-2">Mobile</th>
+                  <th className="p-2">Name</th>
                   <th className="p-2">Seller Points</th>
                 </tr>
               </thead>
@@ -255,8 +269,8 @@ export default function SellerPointsReport() {
                 {allItems.map((item, i) => (
                   <tr key={i} className="border-b cursor-pointer hover:bg-blue-50" onClick={() => handleCustomerClick(item)}>
                     <td className="p-2 text-center">{i + 1}</td>
-                    <td className="p-2 font-medium text-center text-blue-600 underline">{item.supplierName}</td>
-                    <td className="p-2 text-center">{item.mobile}</td>
+                    <td className="p-2 font-medium text-center text-blue-600 underline">{item.userName}</td>
+                   
                     <td className="p-2 text-center">{item.totalSellerPoints}</td>
                   </tr>
                 ))}
@@ -269,55 +283,69 @@ export default function SellerPointsReport() {
 
       {/* --- SALE LIST MODAL --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-              <h3 className="text-xl font-bold text-gray-800">Sales for {currentCustomerName}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-red-500">
-                <FaTimes size={20} />
-              </button>
-            </div>
-
-            <div className="flex gap-2 p-4">
-              <button onClick={exportModalExcel} className="px-3 py-1 text-sm text-white bg-green-600 rounded">Export Excel</button>
-              <button onClick={exportModalPDF} className="px-3 py-1 text-sm text-white bg-red-600 rounded">Export PDF</button>
-            </div>
-
-            <div className="flex-1 p-4 overflow-y-auto">
-              {modalLoading ? (
-                <p className="text-center">Loading sales...</p>
-              ) : (
-                <table className="w-full text-sm text-left border">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="p-2 border">Date</th>
-                      <th className="p-2 border">Purchase Code</th>
-                      <th className="p-2 border">Amount</th>
-                      <th className="p-2 border">Warehouse</th>
-                      <th className="p-2 border">PaymentType</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedCustomerSales.length > 0 ? (
-                        selectedCustomerSales.map((sale, idx) => (
-                        <tr key={idx} className="border-b">
-                            <td className="p-2">{new Date(sale.createdAt).toLocaleDateString()}</td>
-                            <td className="p-2">{sale.purchaseCode}</td>
-                            <td className="p-2">{sale.grandTotal}</td>
-                            <td className="p-2">{sale.warehouse.warehouseName}</td>
-                            <td className="p-2">{sale.payments[0]?.paymentType.paymentTypeName || "-"}</td>
-                        </tr>
-                        ))
-                    ) : (
-                        <tr><td colSpan="4" className="p-4 text-center">No sales found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">Points History: {currentCustomerName}</h3>
+          {/* Displaying the Grand Total summary from the response */}
+          {!modalLoading && (
+            <p className="text-sm font-semibold text-blue-600">
+              Total Points Earned: {selectedCustomerSales.summary?.grandTotalPoints || 0}
+            </p>
+          )}
         </div>
-      )}
+        <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-red-500">
+          <FaTimes size={20} />
+        </button>
+      </div>
+
+      <div className="flex gap-2 p-4">
+        <button onClick={exportModalExcel} className="px-3 py-1 text-sm text-white bg-green-600 rounded">Export Excel</button>
+        <button onClick={exportModalPDF} className="px-3 py-1 text-sm text-white bg-red-600 rounded">Export PDF</button>
+      </div>
+
+      <div className="flex-1 p-4 overflow-y-auto">
+        {modalLoading ? (
+          <p className="text-center">Loading sales and points...</p>
+        ) : (
+          <table className="w-full text-sm text-left border">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-2 border">Date</th>
+                <th className="p-2 border">Bill Number</th>
+                <th className="p-2 border">Bill Amount</th>
+                <th className="p-2 text-center border">Points Earned</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Note: Accessing .history because our backend response has summary + history */}
+              {selectedCustomerSales.history && selectedCustomerSales.history.length > 0 ? (
+                selectedCustomerSales.history.map((sale, idx) => (
+                  <tr key={idx} className="border-b hover:bg-gray-50">
+                    <td className="p-2">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                    <td className="p-2 font-mono text-xs">{sale.billNumber || "-"}</td>
+                    <td className="p-2">
+                      {sale.billAmount}
+                    </td>
+                    <td className="p-2 font-bold text-center text-green-700">
+                      +{sale.totalBillPoints}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-gray-500">No points history found for this seller.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

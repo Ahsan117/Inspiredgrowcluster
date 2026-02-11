@@ -140,6 +140,8 @@ const exportToExcel = () => {
     const row = {
       "#": idx + 1,
       "Customer": cust.customerName,
+      "Phone": cust.phone,
+      "Email": cust.email,
       "Card No": cust.cardNo || "NO CARD",
     };
 
@@ -157,11 +159,11 @@ const exportToExcel = () => {
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Customer Monthly Report");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Premium Customer Monthly Report");
   // optionally auto-width columns
   const cols = Object.keys(rows[0] || {}).map(k => ({ wch: Math.min(Math.max(10, String(k).length + 8), 40) }));
   worksheet["!cols"] = cols;
-  XLSX.writeFile(workbook, "Customer_Monthly_Report.xlsx");
+  XLSX.writeFile(workbook, "Premium_Customer_Monthly_Report.xlsx");
 };
 
 // Export customer-month table to PDF
@@ -171,7 +173,7 @@ const exportToPDF = () => {
   const doc = new jsPDF({ orientation: "landscape" });
 
   const head = [
-    ["#", "Customer", "Card No", ...monthKeys, "Grand Total"]
+    ["#", "Customer","Phone","Email", "Card No", ...monthKeys, "Grand Total"]
   ];
 
   const body = allItems.map((cust, idx) => {
@@ -180,6 +182,8 @@ const exportToPDF = () => {
     const row = [
       idx + 1,
       cust.customerName,
+      cust.phone,
+      cust.email,
       cust.cardNo || "NO CARD"
     ];
     monthKeys.forEach(m => {
@@ -191,7 +195,7 @@ const exportToPDF = () => {
     return row;
   });
 
-  doc.text("Customer Monthly Purchase Report", 14, 14);
+  doc.text("Premium Customer Monthly Purchase Report", 14, 14);
   autoTable(doc, {
     head,
     body,
@@ -202,7 +206,7 @@ const exportToPDF = () => {
     columnStyles: { 0: { cellWidth: 8 } } // small first column
   });
 
-  doc.save("Customer_Monthly_Report.pdf");
+  doc.save("Premium_Customer_Monthly_Report.pdf");
 };
 
 
@@ -269,7 +273,7 @@ const exportModalToPDF = () => {
  {loading && <LoadingScreen />}
         <div className="flex flex-col w-full max-h-screen min-h-screen p-6 overflow-y-auto">
           <header className="flex flex-col items-start mb-4 sm:flex-row sm:items-center">
-            <h1 className="text-2xl font-semibold text-gray-800">Customer Sales Report</h1>
+            <h1 className="text-2xl font-semibold text-gray-800">Premium Member Sales Report</h1>
           </header>
 
           {/* Filters */}
@@ -345,6 +349,8 @@ const exportModalToPDF = () => {
       <tr>
         <th className="p-2">#</th>
         <th className="p-2">Customer</th>
+        <th className="p-2">Phone</th>
+        <th className="p-2">Email</th>
         <th className="p-2">Card No</th>
 
         {monthKeys.map(m => (
@@ -359,9 +365,11 @@ const exportModalToPDF = () => {
 
         return (
           <tr key={cust.customerId} className="border-b hover:bg-gray-50">
-            <td className="p-2">{index + 1}</td>
-            <td className="p-2">{cust.customerName}</td>
-            <td className="p-2">{cust.cardNo || "NO CARD"}</td>
+            <td className="p-2 text-center">{index + 1}</td>
+            <td className="p-2 text-center">{cust.customerName}</td>
+            <td className="p-2 text-center">{cust.phone || "-"}</td>
+            <td className="p-2 text-center">{cust.email || "-"}</td>
+            <td className="p-2 text-center">{cust.cardNo || "NO CARD"}</td>
 
             {monthKeys.map(month => (
               <td
