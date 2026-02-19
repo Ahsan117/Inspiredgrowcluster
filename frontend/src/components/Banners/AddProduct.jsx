@@ -4,13 +4,16 @@ import Sidebar from "../Sidebar.jsx";
 import Select from "react-select";
 import axios from "axios";
 import WindowedSelect from "react-windowed-select";
+import { useSearchParams } from "react-router-dom";
 export default function AddProduct() {
+  const [searchParams] = useSearchParams();
+  const [folderId,setFolderId] = useState(null);
   const link = "https://pos.inspiredgrow.in/vps";
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [productId, setProductId] = useState("PROD/2025/001");
+  const [productId, setProductId] = useState("");
   const [media, setMedia] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  
   const [allItems, setAllItems] = useState([]); // All items from API
   const [data, setData] = useState({
     brands: [],
@@ -77,6 +80,51 @@ export default function AddProduct() {
     fetchData();
   }, []);
 
+  useEffect(()=>{
+       const fId= searchParams.get("folderId")
+       if(!fId) return;
+       setFolderId(fId);
+       const fetchProduct = async()=>{
+           try{
+            const token = `bearer ${localStorage.getItem("token")}`;
+            const res = await axios.get(`${link}/api/product/${fId}`,{
+                headers:{Authorization:token}
+            });
+            const product = res.data.data;
+            console.log("Fetched product for editing:", product);
+            setProductId(product.folderName);
+            const mediaWithMeta = product.media.map((m) => ({
+              url: m.url,
+              type:  "image" ,
+              brand: m.brand || null,
+              category: m.category || null,
+              subcategory: m.subcategory || null,
+              subsubcategory: m.subsubcategory || null,
+              relatedItems:m.items?.map((ri) => ({
+                label: allItems.find(i=>i._id === ri)?.itemName || "Unknown Item",
+                value: ri
+              })) || [],
+              availableRelatedItems: allItems
+                .filter((i) =>
+                  (!m.brand || i.brand === m.brand) &&
+                  (!m.category || i.category === m.category) &&
+                  (!m.subcategory || i.subcategory === m.subcategory) &&
+                  (!m.subsubcategory || i.subsubcategory === m.subsubcategory)
+                )
+                .map((i) => ({ label: i.itemName, value: i._id })),
+            }));
+            console.log("Media with metadata for editing:", mediaWithMeta);
+            setMedia(mediaWithMeta);
+           }
+           catch(err){
+                console.error("❌ Failed to fetch product details:", err);
+            }
+       }
+       fetchProduct();
+  },[data])
+
+
+
   // File Upload
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -112,9 +160,9 @@ export default function AddProduct() {
         const filteredItems = allItems
           .filter(
             (i) =>
-              (!selectedBrand || i.brand === selectedBrand) ||
-              (!selectedCategory || i.category === selectedCategory) ||
-              (!selectedSubcategory || i.subcategory === selectedSubcategory) ||
+              (!selectedBrand || i.brand === selectedBrand) &&
+              (!selectedCategory || i.category === selectedCategory) &&
+              (!selectedSubcategory || i.subcategory === selectedSubcategory) &&
               (!selectedSubsubcategory || i.subsubcategory === selectedSubsubcategory)
           )
           .map((i) => ({
@@ -129,6 +177,7 @@ export default function AddProduct() {
       return updated;
     });
   };
+    
 const saveFolder = async () => {
   console.log("📁 Saving full folder:", { productId, media });
   try {
@@ -143,18 +192,19 @@ const saveFolder = async () => {
     });
 
     const token = `bearer ${localStorage.getItem("token")}`;
+    console.log(formData)
 
-    const r = await axios.post(`${link}/api/product/upload`, formData, {
-      headers: {
-        "Authorization": token,
-        "Content-Type": "multipart/form-data"
-      },
-    });
+    // const r = await axios.post(folderId?`${link}/api/product/upload`: `${link}/api/product/add-folder`, formData, {
+    //   headers: {
+    //     "Authorization": token,
+    //     "Content-Type": "multipart/form-data"
+    //   },
+    // });
 
-    console.log("✅ Folder saved successfully:", r.data);
-    alert("✅ Full folder saved!");
-    setProductId("");
-    setMedia([]);
+    // console.log("✅ Folder saved successfully:", r.data);
+    // alert("✅ Full folder saved!");
+    // setProductId("");
+    // setMedia([]);
   } catch (error) {
     console.error("❌ Error saving folder:", error);
   }
@@ -211,7 +261,7 @@ const saveFolder = async () => {
               >
                 {item.type === "image" ? (
                   <img
-                    src={item.url}
+                    src={folderId?`${link}/${item.url}`:item.url}
                     alt="preview"
                     className="object-cover w-full h-40 rounded"
                   />
@@ -228,8 +278,8 @@ const saveFolder = async () => {
                   <label className="text-sm">Brand</label>
                   <Select
                     options={data.brands}
-                    value={item.brand}
-                    onChange={(val) => updateMediaData(idx, "brand", val)}
+                    value={data.brands.find(b=> b.value==item.brand) || null}
+                    onChange={(val) => updateMediaData(idx, "brand", val.value)}
                   />
                 </div>
 
@@ -238,8 +288,8 @@ const saveFolder = async () => {
                   <label className="text-sm">Category</label>
                   <Select
                     options={data.categories}
-                    value={item.category}
-                    onChange={(val) => updateMediaData(idx, "category", val)}
+                    value={data.categories.find((c) => c.value === item.category) || null}
+                    onChange={(val) => updateMediaData(idx, "category", val.value)}
                   />
                 </div>
 
@@ -248,8 +298,8 @@ const saveFolder = async () => {
                   <label className="text-sm">Subcategory</label>
                   <Select
                     options={data.subcategories}
-                    value={item.subcategory}
-                    onChange={(val) => updateMediaData(idx, "subcategory", val)}
+                    value={data.subcategories.find((s) => s.value === item.subcategory) || null}
+                    onChange={(val) => updateMediaData(idx, "subcategory", val.value)}
                   />
                 </div>
 
@@ -258,9 +308,9 @@ const saveFolder = async () => {
                   <label className="text-sm">Sub-subcategory</label>
                   <Select
                     options={data.subSubcategories}
-                    value={item.subsubcategory}
+                    value={data.subSubcategories.find((s) => s.value === item.subsubcategory) || null}
                     onChange={(val) =>
-                      updateMediaData(idx, "subsubcategory", val)
+                      updateMediaData(idx, "subsubcategory", val.value)
                     }
                   />
                 </div>
@@ -274,7 +324,7 @@ const saveFolder = async () => {
   options={item.availableRelatedItems || []}
   isMulti
   value={item.relatedItems}
-  onChange={(val) => updateMediaData(idx, "relatedItems", val)}
+  onChange={(val) => updateMediaData(idx, "relatedItems", val.value)}
   menuPortalTarget={document.body} // dropdown body me render hoga (overflow issue fix)
   menuPosition="fixed"
   maxMenuHeight={300} // dropdown height ko 300px kar diya
